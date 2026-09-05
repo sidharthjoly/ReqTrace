@@ -31,6 +31,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -110,9 +111,11 @@ def publish(branch: str = "gh-pages") -> int:
         print("working tree is dirty — commit or stash before publishing",
               file=sys.stderr)
         return 1
-    tmp = ROOT / ".git" / "pages-worktree"
-    subprocess.run(["git", "worktree", "remove", "--force", str(tmp)],
-                   cwd=ROOT, capture_output=True)
+    # Outside the repo entirely: git refuses some operations on a worktree
+    # nested under .git/, and a stray one inside the tree would get picked up
+    # by the next `git add -A`.
+    tmp = Path(tempfile.mkdtemp(prefix="reqtrace-pages-"))
+    tmp.rmdir()  # `worktree add` wants to create it
     r = subprocess.run(["git", "worktree", "add", "--detach", str(tmp)],
                        cwd=ROOT, capture_output=True, text=True)
     if r.returncode:
