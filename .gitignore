@@ -8,6 +8,9 @@ __pycache__/
 fixtures/raw/
 data/jobs.db
 *.db
+# WAL leaves these two beside the database; *.db does not cover them.
+*.db-wal
+*.db-shm
 data/discovery/
 data/meta_sitemap_probe.json
 data/logs/
