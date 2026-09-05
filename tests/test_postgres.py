@@ -136,3 +136,28 @@ def test_the_two_backends_agree(store, tmp_path):
         for r in rows]
     assert strip(pg["vendors"]) == strip(sq["vendors"])
     assert [r["closed"] for r in pg["churn"]] == [r["closed"] for r in sq["churn"]]
+
+
+def test_a_sweep_survives_the_server_hanging_up(store):
+    """The failure that killed the first real Actions run.
+
+    A sweep holds one connection for hours while spending most of its time
+    waiting on vendor HTTP APIs, and a serverless Postgres suspends an idle
+    compute — Neon's default is five minutes, which one slow board clears.
+    The next query then dies with AdminShutdown.
+
+    Simulated here by terminating the store's own backend from a second
+    connection, which is what Neon's suspend does to it."""
+    import psycopg
+
+    store.reconcile(snap([job("1"), job("2")]))
+    pid = store.conn.execute("SELECT pg_backend_pid()").fetchone()[0]
+
+    with psycopg.connect(DSN) as killer:
+        killer.execute("SELECT pg_terminate_backend(%s)", (pid,))
+
+    # Same call the sweep makes for its next board. Before the fix this raised
+    # psycopg.errors.AdminShutdown and took the whole run with it.
+    r = store.reconcile(snap([job("1")]))
+    assert r.closed == 1, "reconcile did not complete after the reconnect"
+    assert store.conn.execute("SELECT pg_backend_pid()").fetchone()[0] != pid

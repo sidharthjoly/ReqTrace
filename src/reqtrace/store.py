@@ -263,7 +263,45 @@ class Store:
         )
         self.conn.cursor().execute(sql, vals)
 
+    def _dropped(self, exc: BaseException) -> bool:
+        """Did the server hang up, as opposed to rejecting the query?"""
+        if self.backend != "postgres":
+            return False
+        import psycopg
+
+        return isinstance(exc, (psycopg.OperationalError, psycopg.InterfaceError))
+
+    def _reconnect(self) -> None:
+        import psycopg
+
+        try:
+            self.conn.close()
+        except Exception:  # noqa: BLE001 - it is already gone
+            pass
+        self.conn = psycopg.connect(self.dsn)
+
     def reconcile(self, snap: BoardSnapshot) -> ReconcileResult:
+        """Reconcile one board, surviving a server that hung up on us.
+
+        A sweep holds one connection for hours while most of its time is spent
+        waiting on seven vendors' HTTP APIs, and a serverless Postgres suspends
+        an idle compute — Neon's default is five minutes, which one slow board
+        clears easily. The connection then dies with AdminShutdown on the next
+        query, hours into a run.
+
+        Retrying the whole board is safe: it is upserts plus a diff against the
+        stored open set, so replaying it lands on the same state. Doing it here
+        rather than per-statement means a half-applied board is re-applied
+        whole, never left torn."""
+        try:
+            return self._reconcile(snap)
+        except Exception as exc:  # noqa: BLE001
+            if not self._dropped(exc):
+                raise
+            self._reconnect()
+            return self._reconcile(snap)
+
+    def _reconcile(self, snap: BoardSnapshot) -> ReconcileResult:
         """Upsert everything on the board, then close whatever fell off it."""
         res = ReconcileResult(snap.ats_vendor, snap.board_token,
                               fetched=len(snap.jobs), error=snap.error)

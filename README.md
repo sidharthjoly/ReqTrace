@@ -279,6 +279,38 @@ the runner sweeps into Postgres; if both publish, the site alternates between
 two different databases with two different `first_seen_at` histories, and the
 series stops meaning anything. Exactly one of them should be authoritative.
 
+### Seeding it: copy, do not re-sweep
+
+`scripts/migrate_to_postgres.py` carries the SQLite rows over with their
+timestamps. Sweeping into an empty Postgres would *look* like seeding and is
+not: it stamps `first_seen_at` with today on every row, drops every
+`closed_at`, and replaces the run log with one fresh entry per board —
+restarting the exact series the project exists to accumulate. The migration
+copies 51,232 jobs, 407 run rows and 387 companies by `COPY`, then asserts the
+`first_seen_at` range and the closed count match the source before declaring
+success.
+
+Type conversions that only surface against a real server: `complete` is
+INTEGER here and BOOLEAN there, `posted_at` is TEXT here and TIMESTAMPTZ there
+(an empty string is a valid TEXT value and an invalid timestamptz), `function`
+needs quoting, the BIGSERIAL `id` columns must be left for the sequence, and a
+stray NUL in any of 3,362 vendor-supplied bodies aborts the whole COPY.
+
+### A sweep has to survive the database hanging up
+
+The first real Actions run died on `psycopg.errors.AdminShutdown: terminating
+connection due to administrator command`. Not a misconfiguration: a sweep holds
+one connection for hours while spending nearly all of that time waiting on
+vendor HTTP APIs, and a serverless compute suspends when idle — Neon's default
+is five minutes, which one slow Workday board clears comfortably.
+
+`Store.reconcile` now reconnects and replays the board. Replaying is safe
+because a board is upserts plus a diff against the stored open set, so it lands
+on the same state; retrying at board granularity rather than per statement
+means a half-applied board is re-applied whole rather than left torn. Any
+serverless Postgres does this, so the fix belongs in the code rather than in a
+provider setting.
+
 ### What the port actually needed
 
 `store.py` already spoke both dialects, but the Postgres half had never been
@@ -473,6 +505,7 @@ src/reqtrace/static/        two vanilla HTML pages, no build step
 scripts/install_autorun.py   installs/removes the daily launchd agent
 scripts/autorun.sh           what the agent runs: one --vendor all sweep + export
 scripts/export_static.py     site/ — the same pages with no Python behind them
+scripts/migrate_to_postgres.py  carries the SQLite history into Postgres
 .github/workflows/sweep.yml  the same sweep on a runner; needs DATABASE_URL
 tests/test_postgres.py       the Postgres path, against a real server
 data/discovered_boards.csv   newly found AU boards, ranked by AU data roles
