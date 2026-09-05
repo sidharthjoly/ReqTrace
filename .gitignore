@@ -15,3 +15,6 @@ data/discovery/
 data/meta_sitemap_probe.json
 data/logs/
 site/
+.neon
+.env.local
+node_modules/
