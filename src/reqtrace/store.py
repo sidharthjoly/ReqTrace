@@ -142,7 +142,13 @@ class Store:
         else:
             path = sqlite_path or DEFAULT_SQLITE
             Path(path).parent.mkdir(parents=True, exist_ok=True)
-            self.conn = sqlite3.connect(path)
+            self.conn = sqlite3.connect(path, timeout=30)
+            # A scheduled sweep holds write transactions for minutes at a time,
+            # and under the default rollback journal that locks readers out
+            # entirely — the runs page would 500 for the length of every sweep.
+            # WAL lets readers carry on against the last committed state.
+            self.conn.execute("PRAGMA journal_mode=WAL")
+            self.conn.execute("PRAGMA busy_timeout=30000")
             self.ph = "?"
             self.backend = f"sqlite:{Path(path).name}"
 

@@ -10,7 +10,7 @@ disappears — the `first_seen_at` / `closed_at` trace the index accumulates is
 the thing it is named for, and is worth more than the listings.
 
 **353 boards · 51,210 jobs · 3,359 open Australian roles · 302 of them data
-roles · 7 ATS adapters · 96 tests**
+roles · 7 ATS adapters · 105 tests**
 
 ## Step 0 — the audit that decided the build order
 
@@ -73,17 +73,28 @@ company name and location mix.
 
 ```bash
 uv sync
+uv run python -m reqtrace.run --vendor all           # every adapter, one after another
 uv run python -m reqtrace.run --vendor greenhouse    # ingest every board for one vendor
 uv run python -m reqtrace.run --vendor oracle --token 'ebuu.fa.ap1.oraclecloud.com/CX_1'
 uv run python -m reqtrace.run --vendor ashby --from-fixtures   # offline replay
 uv run python -m reqtrace.web                        # browse at 127.0.0.1:8765
 uv run pytest -q
+
+python scripts/install_autorun.py            # sweep every board daily at 05:30
+python scripts/install_autorun.py --status   # is the schedule alive, and what did it do
+python scripts/install_autorun.py --uninstall
 ```
 
 Vendors: `greenhouse`, `ashby`, `smartrecruiters`, `lever`, `workday`,
-`eightfold`, `oracle`. There is no all-vendor entrypoint yet, and **nothing is
-scheduled** — every run is manual, so closure detection is only as fresh as the
-last one. See Next.
+`eightfold`, `oracle`; `--vendor all` sweeps them in turn. Vendors run one after
+another rather than concurrently — `CONCURRENCY` is a per-vendor politeness
+budget, and fanning seven adapters out at once would make it 28 requests in
+flight against seven unrelated APIs.
+
+`--vendor all` also rebuilds the FTS index when it finishes. That used to happen
+only when the web server started, which was harmless while every run was typed
+by hand; with a daily sweep landing jobs it would have left the index fresh and
+the *search* stale.
 
 Storage defaults to SQLite at `data/jobs.db` so this runs with no setup. Set
 `DATABASE_URL` to a Neon/Supabase Postgres and it applies `schema_postgres.sql`
@@ -112,6 +123,45 @@ database. That matters more than it sounds: the `first_seen_at`/`closed_at`
 series is the thing the brief says is worth more than the listings, and
 `CREATE TABLE IF NOT EXISTS` silently skips new columns on an existing file, so
 without a migration the only recovery would be deleting that history.
+
+## Scheduling
+
+Closure detection is the headline feature and it is only ever as truthful as the
+last run — a role filled yesterday still reads as open until something diffs the
+board again. Until now that something was a person typing a command.
+
+`scripts/install_autorun.py` installs a **launchd agent** that runs
+`scripts/autorun.sh` daily at 05:30 local, which is one `--vendor all` sweep plus
+the FTS rebuild, appended to `data/logs/ingest.log`.
+
+launchd rather than GitHub Actions, deliberately: Actions is gated on a Postgres
+that does not exist yet (see Storage), and an ephemeral runner cannot see
+`data/jobs.db`. When a `DATABASE_URL` is provisioned this becomes the fallback
+rather than the plan. `--at HH:MM` moves the time, `--dry-run` prints the plist
+without touching anything, `--status` reports what launchd thinks and tails the
+log, `--uninstall` removes the schedule and leaves the database alone.
+
+Two things that are easy to get wrong here. launchd hands a job a near-empty
+`PATH`, so the absolute path to `uv` is baked into the plist rather than looked
+up — a bare `uv` in the wrapper would work from a shell and fail from the agent.
+And a sweep missed because the Mac was asleep is not skipped the way cron would
+skip it: `launchd.plist(5)` says a missed `StartCalendarInterval` fires on wake,
+with multiple missed intervals coalesced into one. That matters because a
+skipped day is a hole in the `first_seen_at` / `closed_at` series that no later
+run can fill; coalescing is the right trade, since the sweep diffs whatever the
+boards say now rather than replaying each missed day.
+
+`REQTRACE_ARGS` is appended to the sweep, so the whole launchd path can be
+smoke-tested without waiting for 05:30 or pulling 357 boards:
+
+```bash
+env -i HOME="$HOME" PATH=/usr/bin:/bin UV="$(command -v uv)" \
+  REQTRACE_ARGS="--vendor lever --max-boards 1" sh scripts/autorun.sh
+```
+
+The store now opens SQLite in **WAL**. A full sweep holds write transactions for
+minutes at a time, and under the default rollback journal that locks readers out
+entirely — the UI would fail for the length of every scheduled run.
 
 ## Closure detection
 
@@ -215,8 +265,21 @@ keep their case and must never be lowercased. Both `discover_boards.py` and
 uv run python -m reqtrace.web        # http://127.0.0.1:8765
 ```
 
-A stdlib HTTP server and one static HTML file — no framework, no bundler, no
-Node. Two endpoints (`/api/search`, `/api/stats`) and vanilla JS.
+A stdlib HTTP server and two static HTML files — no framework, no bundler, no
+Node. Three endpoints (`/api/search`, `/api/stats`, `/api/runs`) and vanilla JS.
+
+`/runs` is the **ingest health** page. `board_runs` has logged a row per board
+per pass since the first commit and nothing ever read it back; once ingestion is
+scheduled rather than typed, that log is the only evidence the index is still
+being fed. A board that started 404ing six weeks ago looks identical, from the
+search page, to a board that genuinely has no open roles. It leads with how long
+ago the last board was fetched, then rolls up each board's most recent run per
+adapter, and separates three states that are easy to conflate: **failed** (the
+fetch errored), **incomplete** (parsed fewer jobs than the vendor claimed, so it
+is forbidden from closing anything — being read, but not retiring filled roles),
+and **stale** (last run succeeded; nothing has run it since, which is how a dead
+schedule shows up). Status colour is always paired with the word, since
+green/amber/red is exactly the palette a colourblind reader cannot separate.
 
 Search is FTS5 over title + body + company name. **The UI is SQLite-only for
 now** — `search.py` is sqlite3 throughout, so the server refuses to start with a
@@ -251,8 +314,11 @@ scripts/fetch_fixtures.py    complete board dumps + trimmed test samples
 scripts/discover_boards.py   Common Crawl -> candidate tokens -> validated AU boards
 scripts/probe_meta.py        one-off: Meta sitemap + JSON-LD sweep (3 AU roles)
 src/reqtrace/search.py      FTS5 / tsvector query layer + filters
-src/reqtrace/web.py         stdlib server, two JSON endpoints
-src/reqtrace/static/        one vanilla HTML page, no build step
+src/reqtrace/runs.py        reads board_runs back: freshness, coverage, failures
+src/reqtrace/web.py         stdlib server, three JSON endpoints
+src/reqtrace/static/        two vanilla HTML pages, no build step
+scripts/install_autorun.py   installs/removes the daily launchd agent
+scripts/autorun.sh           what the agent runs: one --vendor all sweep
 data/discovered_boards.csv   newly found AU boards, ranked by AU data roles
 fixtures/samples/            committed, test-sized
 fixtures/raw/                full dumps, git-ignored
@@ -460,11 +526,11 @@ is implausible, or its AU hiring is served somewhere this crawl has not found.
 
 ## Next
 
-1. **Scheduling.** Nothing runs automatically today, which undercuts the whole
-   closure-detection premise. Needs an all-vendor entrypoint plus either a
-   launchd agent (works now, keeps the local SQLite) or GitHub Actions once a
-   Postgres is provisioned — Actions runners are ephemeral, so it cannot use the
-   local database.
+1. ~~**Scheduling.**~~ Done: `--vendor all` plus a launchd agent, daily at
+   05:30, with `/runs` to show whether it is still happening. GitHub Actions
+   still waits on a Postgres — the runners are ephemeral and cannot see
+   `data/jobs.db`. The remaining gap is that nothing *tells* you when a sweep
+   degrades; you have to open the page.
 2. NAB / Macquarie / ANZ still unresolved for AU roles (Avature and
    SuccessFactors respectively; neither exposes a JSON feed found so far)
 2. Deploy: GitHub Actions cron for ingestion, and point `DATABASE_URL` at Neon

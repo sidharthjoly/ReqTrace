@@ -1,0 +1,333 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReqTrace · ingest health</title>
+<style>
+  :root {
+    --bg:#fbfbfa; --panel:#fff; --ink:#1a1a19; --muted:#6b6b66; --line:#e5e4e0;
+    --accent:#2f6f4f; --accent-soft:#e8f1ec; --chip:#f2f1ee; --warn:#8a5a20;
+    /* Status, not series. Reserved for board state and always shipped with a
+       word beside it — green/amber/red is the canonical colourblind trap, so
+       hue never carries the meaning on its own here. */
+    --ok:#2f6f4f; --ok-mark:#2f6f4f;
+    --degraded:#8a5a20; --degraded-mark:#b8791f;
+    --bad:#b3352a; --bad-mark:#b3352a;
+    --idle:#c9c7c1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#161614; --panel:#1e1e1c; --ink:#eceae5; --muted:#9a978f; --line:#33322e;
+      --accent:#7fc4a0; --accent-soft:#1f2f27; --chip:#272621; --warn:#d9a441;
+      --ok:#7fc4a0; --ok-mark:#5aa583;
+      --degraded:#d9a441; --degraded-mark:#c9922f;
+      --bad:#ec8677; --bad-mark:#d4614f;
+      --idle:#403f3a;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { padding:22px 20px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+  .wrap { max-width:1000px; margin:0 auto; }
+  h1 { margin:0 0 4px; font-size:19px; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:13px; }
+  nav { margin-top:12px; display:flex; gap:6px; }
+  nav a { font-size:13px; padding:5px 11px; border-radius:999px; background:var(--chip);
+    color:var(--ink); text-decoration:none; }
+  nav a[aria-current=page] { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+  main { max-width:1000px; margin:0 auto; padding:18px 20px 60px; }
+  section { margin-bottom:26px; }
+  h2 { font-size:14px; margin:0 0 4px; letter-spacing:.02em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; }
+  .note { color:var(--muted); font-size:12.5px; margin:0 0 10px; }
+
+  /* Hero: freshness is the one number this page exists to answer. */
+  .hero { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:18px 20px; display:flex; flex-wrap:wrap; gap:6px 26px; align-items:baseline; }
+  .hero .big { font-size:34px; font-weight:650; letter-spacing:-.02em; line-height:1.1; }
+  .hero .when { color:var(--muted); font-size:13px; }
+  .pill { font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px;
+    background:var(--chip); display:inline-flex; align-items:center; gap:6px; }
+  .pill.ok { background:var(--accent-soft); color:var(--ok); }
+  .pill.degraded { color:var(--degraded); background:var(--chip); }
+  .pill.bad { color:var(--bad); background:var(--chip); }
+  .dot { width:8px; height:8px; border-radius:50%; background:currentColor; flex:none; }
+
+  .tiles { display:grid; gap:10px; margin-top:10px;
+    grid-template-columns:repeat(auto-fit, minmax(148px, 1fr)); }
+  .tile { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; }
+  .tile .k { color:var(--muted); font-size:12px; }
+  .tile .v { font-size:22px; font-weight:600; letter-spacing:-.01em; margin-top:2px; }
+  .tile .v small { font-size:12px; font-weight:400; color:var(--muted); letter-spacing:0; }
+  .tile.flag .v { color:var(--degraded); }
+  .tile.alarm .v { color:var(--bad); }
+
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    overflow:hidden; }
+  .scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th, td { text-align:right; padding:9px 12px; border-bottom:1px solid var(--line);
+    white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase;
+    letter-spacing:.03em; position:sticky; top:0; background:var(--panel); }
+  th:first-child, td:first-child { text-align:left; }
+  tbody tr:last-child td { border-bottom:0; }
+  tbody tr:hover { background:var(--chip); }
+  .num { font-variant-numeric:tabular-nums; }
+  .zero { color:var(--muted); }
+  .tok { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; }
+  .err { color:var(--bad); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12px; white-space:normal; max-width:420px; text-align:left; }
+
+  /* Proportion bar. Segments are separated by a 2px surface gap so adjacent
+     fills never read as one, and each carries its own count in the legend —
+     the colour is a second cue, not the only one. */
+  .bar { display:flex; gap:2px; height:9px; width:130px; background:var(--idle);
+    border-radius:4px; overflow:hidden; }
+  .bar span { min-width:3px; }
+  .bar .s-ok { background:var(--ok-mark); }
+  .bar .s-degraded { background:var(--degraded-mark); }
+  .bar .s-bad { background:var(--bad-mark); }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; margin:0 0 10px; font-size:12.5px;
+    color:var(--muted); }
+  .legend b { font-weight:600; color:var(--ink); }
+  .swatch { width:9px; height:9px; border-radius:3px; display:inline-block;
+    vertical-align:-1px; margin-right:5px; }
+  .state { font-weight:600; }
+  .state.ok { color:var(--ok); } .state.degraded { color:var(--degraded); }
+  .state.bad { color:var(--bad); }
+
+  details { margin-top:6px; }
+  summary { cursor:pointer; color:var(--muted); font-size:13px; padding:4px 0; }
+  .empty { padding:18px; color:var(--muted); font-size:13.5px; }
+  footer { color:var(--muted); font-size:12px; text-align:center; padding:0 20px 30px; }
+  code { background:var(--chip); padding:1px 5px; border-radius:4px; font-size:12.5px; }
+</style>
+
+<header><div class="wrap">
+  <h1>Ingest health</h1>
+  <div class="sub">Every sweep pulls each board in full and diffs it. This page is
+    the evidence that it is still happening — closure detection is only as
+    truthful as the last run.</div>
+  <nav>
+    <a href="/">Search</a>
+    <a href="/runs" aria-current="page">Ingest health</a>
+  </nav>
+</div></header>
+
+<main>
+  <section>
+    <div class="hero" id="hero"><div class="big">loading…</div></div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section>
+    <h2>Coverage by vendor</h2>
+    <p class="note">Each board's most recent run, rolled up per adapter. A board
+      is <span class="state ok">complete</span> when the vendor's own total
+      matched what was parsed — only a complete snapshot is allowed to close
+      anything, so <span class="state degraded">incomplete</span> boards are
+      being read but are not retiring filled roles.</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--ok-mark)"></i>complete</span>
+      <span><i class="swatch" style="background:var(--degraded-mark)"></i>incomplete</span>
+      <span><i class="swatch" style="background:var(--bad-mark)"></i>failed</span>
+    </div>
+    <div class="card scroll"><table id="vendors"></table></div>
+  </section>
+
+  <section>
+    <h2>Needs attention</h2>
+    <p class="note">Boards whose latest run failed outright or came back partial.</p>
+    <div class="card scroll" id="problems"></div>
+  </section>
+
+  <section>
+    <h2>Churn by day</h2>
+    <p class="note" id="churn-note"></p>
+    <div class="card scroll"><table id="churn"></table></div>
+  </section>
+
+  <section>
+    <details>
+      <summary>Raw run log — last 100 board fetches</summary>
+      <div class="card scroll" style="margin-top:8px"><table id="recent"></table></div>
+    </details>
+  </section>
+</main>
+
+<footer>Scheduled by launchd — <code>python scripts/install_autorun.py --status</code>.
+Log at <code>data/logs/ingest.log</code>.</footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? '').toString().replace(/[<>&"]/g,
+  c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const n = v => (v ?? 0).toLocaleString();
+// A zero is real information here (no closures today) but it should not shout
+// as loudly as a count that moved.
+const num = v => (v ? n(v) : '<span class="zero">0</span>');
+
+const parse = iso => iso ? new Date(iso.replace(' ', 'T')) : null;
+const hoursSince = iso => {
+  const d = parse(iso);
+  return d && !isNaN(d) ? (Date.now() - d) / 36e5 : null;
+};
+const ago = h => {
+  if (h === null) return 'never';
+  if (h < 1) return Math.max(Math.round(h * 60), 1) + ' min ago';
+  if (h < 48) return Math.round(h) + 'h ago';
+  return Math.round(h / 24) + 'd ago';
+};
+const stamp = iso => {
+  const d = parse(iso);
+  return d && !isNaN(d) ? d.toLocaleString(undefined,
+    { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+};
+
+function hero(s) {
+  if (!s.ever_run) {
+    $('#hero').innerHTML = `<div class="big">No sweeps yet</div>
+      <div class="when">Run <code>uv run python -m reqtrace.run --vendor all</code>,
+      or install the schedule with <code>python scripts/install_autorun.py</code>.</div>`;
+    return;
+  }
+  const h = hoursSince(s.last_run);
+  // Failed boards are the alarm; stale ones mean the schedule itself stopped,
+  // which is worse but shows up as staleness rather than as an error row.
+  const bad = s.failed > 0 || h > s.stale_hours;
+  const level = bad ? 'bad' : (s.incomplete > 0 || s.stale > 0) ? 'degraded' : 'ok';
+  const label = level === 'ok' ? 'healthy'
+    : level === 'degraded' ? 'degraded' : 'stalled';
+  $('#hero').innerHTML = `
+    <div>
+      <div class="big">${esc(ago(h))}</div>
+      <div class="when">last board fetched · ${esc(stamp(s.last_run))}</div>
+    </div>
+    <span class="pill ${level}"><i class="dot"></i>${label}</span>
+    <div class="when">sweeps daily; a board unseen for
+      ${s.stale_hours}h counts as stale</div>`;
+}
+
+function tiles(s, idx) {
+  const t = [
+    ['Boards tracked', n(s.boards), 'across 7 adapters'],
+    ['Complete', n(s.ok), `of ${n(s.boards)} latest runs`],
+    ['Incomplete', n(s.incomplete), 'cannot close roles', s.incomplete ? 'flag' : ''],
+    ['Failed', n(s.failed), 'latest run errored', s.failed ? 'alarm' : ''],
+    ['Stale', n(s.stale), `unseen > ${s.stale_hours}h`, s.stale ? 'flag' : ''],
+    ['Open roles', idx ? n(idx.open) : '—', idx ? `${n(idx.closed)} closed and retired` : ''],
+  ];
+  $('#tiles').innerHTML = t.map(([k, v, sub, cls]) => `
+    <div class="tile ${cls || ''}">
+      <div class="k">${esc(k)}</div>
+      <div class="v">${v}</div>
+      <div class="k">${esc(sub)}</div>
+    </div>`).join('');
+}
+
+function healthBar(r) {
+  const total = r.boards || 1;
+  const seg = (cls, v) => v ? `<span class="s-${cls}" style="flex:${v}"
+    title="${v} ${cls === 'ok' ? 'complete' : cls === 'degraded' ? 'incomplete' : 'failed'}"></span>` : '';
+  return `<div class="bar" role="img" aria-label="${r.ok} complete, ${r.incomplete}
+    incomplete, ${r.failed} failed of ${total}">
+    ${seg('ok', r.ok)}${seg('degraded', r.incomplete)}${seg('bad', r.failed)}</div>`;
+}
+
+function vendorTable(rows) {
+  $('#vendors').innerHTML = `
+    <thead><tr>
+      <th>Vendor</th><th>Health</th><th>Boards</th><th>Complete</th>
+      <th>Incomplete</th><th>Failed</th><th>Jobs</th><th>New</th><th>Closed</th>
+      <th>Last run</th>
+    </tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td>${esc(r.vendor)}</td>
+      <td>${healthBar(r)}</td>
+      <td class="num">${n(r.boards)}</td>
+      <td class="num">${num(r.ok)}</td>
+      <td class="num">${r.incomplete ? `<span class="state degraded">${n(r.incomplete)}</span>` : num(0)}</td>
+      <td class="num">${r.failed ? `<span class="state bad">${n(r.failed)}</span>` : num(0)}</td>
+      <td class="num">${n(r.fetched)}</td>
+      <td class="num">${num(r.new)}</td>
+      <td class="num">${num(r.closed)}</td>
+      <td class="num" title="${esc(stamp(r.last_run))}">${esc(ago(hoursSince(r.last_run)))}</td>
+    </tr>`).join('')}</tbody>`;
+}
+
+function problemTable(rows) {
+  if (!rows.length) {
+    $('#problems').innerHTML =
+      '<div class="empty">Nothing to look at — every board’s last run came ' +
+      'back whole.</div>';
+    return;
+  }
+  $('#problems').innerHTML = `<table>
+    <thead><tr><th>Board</th><th>State</th><th>Fetched</th><th>Last run</th>
+      <th>Detail</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td class="tok">${esc(r.vendor)}:${esc(r.token)}</td>
+      <td>${r.error ? '<span class="state bad">failed</span>'
+                    : '<span class="state degraded">incomplete</span>'}</td>
+      <td class="num">${n(r.fetched)}</td>
+      <td class="num" title="${esc(stamp(r.fetched_at))}">${esc(ago(hoursSince(r.fetched_at)))}</td>
+      <td class="err">${esc(r.error || 'parsed fewer jobs than the vendor reported — closures skipped')}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function churnTable(rows) {
+  // The first sweep counts the entire backfill as "new", so the series only
+  // becomes a hiring signal from the second day on. Say so rather than letting
+  // a 51,000-row day read as a hiring surge.
+  $('#churn-note').textContent = rows.length < 2
+    ? 'One day of runs so far. The series becomes meaningful once the daily sweep has run a few times — and the first sweep counts the whole backfill as new.'
+    : 'New and closed requisitions per day. The first day of any board counts as backfill, not hiring: everything on a board is new the first time it is seen.';
+  $('#churn').innerHTML = `
+    <thead><tr><th>Day</th><th>Board fetches</th><th>New</th><th>Closed</th>
+      <th>Reopened</th></tr></thead>
+    <tbody>${rows.slice().reverse().map(r => `<tr>
+      <td>${esc(r.day)}</td>
+      <td class="num">${n(r.boards)}</td>
+      <td class="num">${num(r.new)}</td>
+      <td class="num">${num(r.closed)}</td>
+      <td class="num">${num(r.reopened)}</td>
+    </tr>`).join('')}</tbody>`;
+}
+
+function recentTable(rows) {
+  $('#recent').innerHTML = `
+    <thead><tr><th>Board</th><th>When</th><th>Fetched</th><th>New</th>
+      <th>Updated</th><th>Closed</th><th>Reopened</th><th>State</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td class="tok">${esc(r.vendor)}:${esc(r.token)}</td>
+      <td class="num" title="${esc(stamp(r.fetched_at))}">${esc(ago(hoursSince(r.fetched_at)))}</td>
+      <td class="num">${n(r.fetched)}</td>
+      <td class="num">${num(r.new)}</td>
+      <td class="num">${num(r.updated)}</td>
+      <td class="num">${num(r.closed)}</td>
+      <td class="num">${num(r.reopened)}</td>
+      <td>${r.error ? '<span class="state bad">failed</span>'
+            : r.complete ? '<span class="state ok">complete</span>'
+            : '<span class="state degraded">incomplete</span>'}</td>
+    </tr>`).join('')}</tbody>`;
+}
+
+Promise.all([
+  fetch('/api/runs').then(r => r.json()),
+  fetch('/api/stats').then(r => r.json()).catch(() => null),
+]).then(([d, idx]) => {
+  if (d.error) {
+    $('#hero').innerHTML = `<div class="big">Cannot read the run log</div>
+      <div class="when">${esc(d.error)}</div>`;
+    return;
+  }
+  hero(d.summary);
+  tiles(d.summary, idx);
+  vendorTable(d.vendors);
+  problemTable(d.problems);
+  churnTable(d.churn);
+  recentTable(d.recent);
+});
+</script>

@@ -2,8 +2,11 @@
 
 Usage:
     uv run python -m reqtrace.run                # all greenhouse boards in the audit CSV
+    uv run python -m reqtrace.run --vendor all   # every adapter, one vendor at a time
     uv run python -m reqtrace.run --token quantium
     uv run python -m reqtrace.run --from-fixtures   # offline replay, no network
+
+`--vendor all` is what the scheduled sweep runs; see `scripts/install_autorun.py`.
 """
 
 from __future__ import annotations
@@ -13,10 +16,12 @@ import asyncio
 import csv
 import json
 import sys
+import time
 from pathlib import Path
 
 import httpx
 
+from . import search as S
 from .adapters import ADAPTERS
 from .adapters.base import run_board
 from .models import BoardSnapshot, token_slug
@@ -74,44 +79,36 @@ def snapshot_from_fixture(vendor: str, token: str) -> BoardSnapshot:
     return ADAPTERS[vendor].parse(json.loads(path.read_text()), token)
 
 
-async def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--vendor", default="greenhouse")
-    ap.add_argument("--token", action="append", help="board token (repeatable)")
-    ap.add_argument("--from-fixtures", action="store_true", help="replay recorded boards")
-    ap.add_argument("--max-boards", type=int, default=0, help="cap boards this run")
-    args = ap.parse_args()
+def replay_board(vendor: str, token: str) -> BoardSnapshot:
+    """`snapshot_from_fixture` with the isolation `run_board` gives the network
+    path. A board with no recording — most of them, since `fixtures/raw/` is
+    git-ignored — must not abort a `--vendor all` replay for the rest."""
+    try:
+        return snapshot_from_fixture(vendor, token)
+    except Exception as exc:  # noqa: BLE001 - same vendor-isolation boundary
+        return BoardSnapshot(
+            ats_vendor=vendor, board_token=token, complete=False,
+            error=f"{type(exc).__name__}: {exc}"[:300],
+        )
 
-    adapter = ADAPTERS.get(args.vendor)
-    if adapter is None:
-        print(f"no adapter for {args.vendor}", file=sys.stderr)
-        return 2
 
-    tokens = args.token or configured_boards(args.vendor)
-    if args.max_boards:
-        tokens = tokens[: args.max_boards]
-    if not tokens:
-        print(f"no {args.vendor} boards configured", file=sys.stderr)
-        return 2
+async def sweep(vendor: str, tokens: list[str], store: Store,
+                client: httpx.AsyncClient | None) -> tuple[int, int]:
+    """Fetch and reconcile one vendor's boards. Returns (boards, failures).
 
-    store = Store()
-    store.init_schema()
-    print(f"store: {store.backend}   boards: {len(tokens)}", file=sys.stderr)
-
-    if args.from_fixtures:
-        snaps = [snapshot_from_fixture(args.vendor, t) for t in tokens]
+    Vendors are swept one after another, not concurrently: CONCURRENCY is a
+    per-vendor politeness budget, and fanning seven adapters out at once would
+    make it 28 requests in flight."""
+    if client is None:
+        snaps = [replay_board(vendor, t) for t in tokens]
     else:
         sem = asyncio.Semaphore(CONCURRENCY)
 
         async def one(token):
             async with sem:
-                return await run_board(adapter, client, token)
+                return await run_board(ADAPTERS[vendor], client, token)
 
-        async with httpx.AsyncClient(
-            timeout=httpx.Timeout(45.0, connect=15.0),
-            headers={"User-Agent": UA}, follow_redirects=True,
-        ) as client:
-            snaps = await asyncio.gather(*(one(t) for t in tokens))
+        snaps = await asyncio.gather(*(one(t) for t in tokens))
 
     failures = 0
     for snap in snaps:
@@ -120,11 +117,82 @@ async def main() -> int:
         for t in res.closed_titles:
             print(f"    closed: {t}")
         failures += 1 if res.error else 0
+    return len(snaps), failures
+
+
+async def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--vendor", default="greenhouse",
+                    help="adapter name, or 'all' to sweep every vendor in turn")
+    ap.add_argument("--token", action="append", help="board token (repeatable)")
+    ap.add_argument("--from-fixtures", action="store_true", help="replay recorded boards")
+    ap.add_argument("--max-boards", type=int, default=0, help="cap boards per vendor")
+    ap.add_argument("--no-reindex", action="store_true",
+                    help="skip the FTS rebuild the UI searches over")
+    args = ap.parse_args()
+
+    if args.vendor == "all":
+        if args.token:
+            print("--token names a board on one board's vendor, so it needs a "
+                  "single --vendor", file=sys.stderr)
+            return 2
+        vendors = list(ADAPTERS)
+    elif args.vendor in ADAPTERS:
+        vendors = [args.vendor]
+    else:
+        print(f"no adapter for {args.vendor}", file=sys.stderr)
+        return 2
+
+    plan: dict[str, list[str]] = {}
+    for v in vendors:
+        tokens = args.token or configured_boards(v)
+        if args.max_boards:
+            tokens = tokens[: args.max_boards]
+        if tokens:
+            plan[v] = tokens
+    if not plan:
+        print(f"no boards configured for {', '.join(vendors)}", file=sys.stderr)
+        return 2
+
+    store = Store()
+    store.init_schema()
+    total = sum(len(t) for t in plan.values())
+    print(f"store: {store.backend}   vendors: {len(plan)}   boards: {total}",
+          file=sys.stderr)
+
+    boards = failures = 0
+    started = time.monotonic()
+
+    async def sweep_all(client):
+        nonlocal boards, failures
+        for vendor, tokens in plan.items():
+            print(f"--- {vendor}: {len(tokens)} boards", file=sys.stderr)
+            n, failed = await sweep(vendor, tokens, store, client)
+            boards += n
+            failures += failed
+
+    if args.from_fixtures:
+        await sweep_all(None)
+    else:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(45.0, connect=15.0),
+            headers={"User-Agent": UA}, follow_redirects=True,
+        ) as client:
+            await sweep_all(client)
+
+    # The UI searches jobs_fts, not jobs. Rebuilding it only at server start was
+    # fine while every run was manual; once a scheduled sweep is landing jobs
+    # daily, skipping this leaves the index fresh and the search stale.
+    if not args.no_reindex and store.backend != "postgres":
+        print(f"search index: {S.reindex(store.conn)} rows", file=sys.stderr)
 
     store.close()
+    print(f"{boards - failures}/{boards} boards ok in "
+          f"{time.monotonic() - started:.0f}s", file=sys.stderr)
     # One vendor failing must not fail the run for the others; a non-zero exit
-    # only signals that *every* board failed.
-    return 1 if failures == len(snaps) else 0
+    # only signals that *every* board failed. Note `boards` is never 0 here —
+    # an empty plan returned above — so this cannot report 0-of-0 as failure.
+    return 1 if boards and failures == boards else 0
 
 
 if __name__ == "__main__":

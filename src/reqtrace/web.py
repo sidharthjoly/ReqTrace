@@ -17,6 +17,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServe
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from . import runs as R
 from . import search as S
 from .companies import rows as company_rows
 from .store import DEFAULT_SQLITE, Store
@@ -57,14 +58,21 @@ class Handler(SimpleHTTPRequestHandler):
 
         if url.path in ("/", "/index.html"):
             return self._page()
+        if url.path in ("/runs", "/runs.html"):
+            return self._page("runs.html")
 
         # A connection per request: SQLite objects are not thread-safe and
         # opening the file is cheap.
         if url.path.startswith("/api/"):
-            conn = sqlite3.connect(self.db_path)
+            # The scheduled sweep can hold a write for minutes; the store runs
+            # in WAL so readers are not blocked, but keep a timeout anyway for
+            # the moments WAL still needs the write lock (checkpoint, schema).
+            conn = sqlite3.connect(self.db_path, timeout=10)
             try:
                 if url.path == "/api/stats":
                     return self._json(S.stats(conn))
+                if url.path == "/api/runs":
+                    return self._json(R.health(conn))
                 if url.path == "/api/search":
                   try:
                     query = S.Query(
