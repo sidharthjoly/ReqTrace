@@ -48,7 +48,7 @@ def find_uv() -> Path:
     sys.exit("uv not found; install it or pass --uv /path/to/uv")
 
 
-def build_plist(uv: Path, hour: int, minute: int) -> dict:
+def build_plist(uv: Path, hour: int, minute: int, publish: bool = False) -> dict:
     return {
         "Label": LABEL,
         "ProgramArguments": ["/bin/sh", str(ROOT / "scripts" / "autorun.sh")],
@@ -65,6 +65,10 @@ def build_plist(uv: Path, hour: int, minute: int) -> dict:
             "UV": str(uv),
             "PATH": f"{uv.parent}:/usr/bin:/bin:/usr/sbin:/sbin",
             "HOME": str(Path.home()),
+            # With this set the sweep also force-pushes the static export to
+            # gh-pages, so the published site tracks the index instead of
+            # freezing at whenever someone last ran it by hand.
+            **({"REQTRACE_PUBLISH": "1"} if publish else {}),
         },
         # The wrapper writes the real log; these catch anything that fails
         # before it gets that far, which is where launchd problems show up.
@@ -103,6 +107,11 @@ def uninstall() -> int:
 
 def status() -> int:
     print(f"plist:  {PLIST}{'' if PLIST.exists() else '  (not installed)'}")
+    if PLIST.exists():
+        env = plistlib.loads(PLIST.read_bytes()).get("EnvironmentVariables", {})
+        cal = plistlib.loads(PLIST.read_bytes()).get("StartCalendarInterval", {})
+        print(f"sweeps: daily at {cal.get('Hour', 0):02d}:{cal.get('Minute', 0):02d}"
+              f"   publish: {'on' if env.get('REQTRACE_PUBLISH') == '1' else 'off'}")
     r = launchctl("print", f"{domain()}/{LABEL}")
     if r.returncode:
         print("launchd: not loaded")
@@ -126,6 +135,9 @@ def main() -> int:
     ap.add_argument("--at", default="05:30", metavar="HH:MM",
                     help="local time to sweep daily (default 05:30)")
     ap.add_argument("--uv", type=Path, help="path to the uv binary")
+    ap.add_argument("--publish", action=argparse.BooleanOptionalAction, default=None,
+                    help="also push the static export to gh-pages after each "
+                         "sweep (default: keep whatever the installed plist has)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--uninstall", action="store_true")
     ap.add_argument("--status", action="store_true")
@@ -148,7 +160,16 @@ def main() -> int:
     except (ValueError, AssertionError):
         sys.exit(f"--at wants HH:MM in 24-hour local time, got {args.at!r}")
 
-    plist = build_plist(args.uv or find_uv(), hour, minute)
+    # Reinstalling to change the time should not silently switch publishing off,
+    # so an unspecified --publish inherits what the installed plist already says.
+    publish = args.publish
+    if publish is None:
+        try:
+            publish = plistlib.loads(PLIST.read_bytes()).get(
+                "EnvironmentVariables", {}).get("REQTRACE_PUBLISH") == "1"
+        except (OSError, ValueError):
+            publish = False
+    plist = build_plist(args.uv or find_uv(), hour, minute, publish)
     if args.dry_run:
         sys.stdout.write(plistlib.dumps(plist).decode())
         return 0
@@ -167,6 +188,9 @@ def main() -> int:
 
     print(f"installed {PLIST}")
     print(f"sweeps every board daily at {hour:02d}:{minute:02d} local")
+    print("publishes the static export to gh-pages after each sweep"
+          if publish else
+          "does not publish; pass --publish to push the export to gh-pages too")
     print(f"log: {LOGS / 'ingest.log'}")
     print("status:  python scripts/install_autorun.py --status")
     print("remove:  python scripts/install_autorun.py --uninstall")

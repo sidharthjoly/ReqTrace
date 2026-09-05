@@ -83,7 +83,8 @@ uv run python -m reqtrace.run --vendor ashby --from-fixtures   # offline replay
 uv run python -m reqtrace.web                        # browse at 127.0.0.1:8765
 uv run pytest -q
 
-python scripts/install_autorun.py            # sweep every board daily at 05:30
+python scripts/install_autorun.py --publish  # sweep daily at 05:30, then publish
+python scripts/install_autorun.py            # same, without pushing the export
 python scripts/install_autorun.py --status   # is the schedule alive, and what did it do
 python scripts/install_autorun.py --uninstall
 ```
@@ -205,9 +206,16 @@ discovered:
   carry the export timestamp, and `/runs` says outright that its "N hours ago"
   figures count from the export rather than from now.
 
-The daily sweep re-exports `site/` when it finishes. It does **not** publish:
-that pushes to a remote, and a daily unattended push is a bigger commitment than
-a daily fetch. `REQTRACE_PUBLISH=1` in the plist opts in — tested end to end
+The daily sweep re-exports `site/` when it finishes, and — with
+`install_autorun.py --publish`, which is how it is currently installed — pushes
+that export to `gh-pages`, so the public site tracks the index instead of
+freezing at whenever someone last ran it by hand. Publishing is a separate
+opt-in from scheduling because it pushes to a remote, and an unattended daily
+push is a bigger commitment than an unattended daily fetch;
+`--no-publish` turns it back off, and reinstalling to change the time inherits
+whatever the installed plist already says rather than silently resetting it.
+`--status` reports both. The mechanism is `REQTRACE_PUBLISH=1` in the plist,
+tested end to end
 from a bare launchd-style environment, twice in a row, which is how the two bugs
 in that path were found. The first was that `checkout --orphan` refuses a branch
 name that already exists, so the *second* publish failed and every one after it
