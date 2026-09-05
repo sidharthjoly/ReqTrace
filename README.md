@@ -9,8 +9,11 @@ every run pulls the *full* board and diffs it, a role that gets filled
 disappears — the `first_seen_at` / `closed_at` trace the index accumulates is
 the thing it is named for, and is worth more than the listings.
 
-**353 boards · 51,210 jobs · 3,359 open Australian roles · 302 of them data
+**353 boards · 51,232 jobs · 3,356 open Australian roles · 279 of them data
 roles · 7 ATS adapters · 105 tests**
+
+Browse a snapshot at <https://sidharthjoly.com/ReqTrace/>; ingest health at
+<https://sidharthjoly.com/ReqTrace/runs.html>.
 
 ## Step 0 — the audit that decided the build order
 
@@ -165,6 +168,12 @@ entirely — the UI would fail for the length of every scheduled run.
 
 ## Static export
 
+**Live: <https://sidharthjoly.com/ReqTrace/>** — served from the `gh-pages`
+branch. The repo stays private; the *site* is public, because private Pages is
+Enterprise Cloud only. It lands on the personal domain rather than
+`github.io` because the account has an org-level custom domain, so every project
+site inherits it.
+
 `scripts/export_static.py` writes `site/` — the same two pages, no Python behind
 them.
 
@@ -202,7 +211,9 @@ a daily fetch. `REQTRACE_PUBLISH=1` in the plist opts in.
 
 `--publish` force-pushes an orphan commit to `gh-pages` rather than committing
 the export to `main` — the snapshot is regenerable, and 3MB of JSON a day would
-be a gigabyte of git history a year.
+be a gigabyte of git history a year. Pushing that branch is what enabled Pages
+in the first place; there was no separate setup step. `jobs.json` is 3.1MB on
+disk and **361KB over the wire**, since Pages gzips it.
 
 ## Closure detection
 
