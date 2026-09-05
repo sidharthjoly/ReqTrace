@@ -303,10 +303,14 @@ payloads. It skips unless `REQTRACE_TEST_DSN` is set, so `pytest` stays green on
 a machine with no Postgres:
 
 ```bash
+brew install postgresql@17 && brew services start postgresql@17
 createdb reqtrace_test
 REQTRACE_TEST_DSN=postgresql:///reqtrace_test uv run pytest    # 113 tests
 uv run pytest                                                  # 105 + 8 skipped
 ```
+
+The server is only needed to run those eight; it is left stopped, so `pytest`
+skips them by default rather than failing on a machine without one.
 
 The live search UI is still SQLite-only and that is now mostly moot: the
 published site does its searching in the browser, so the export only has to
