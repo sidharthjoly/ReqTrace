@@ -10,7 +10,7 @@ disappears — the `first_seen_at` / `closed_at` trace the index accumulates is
 the thing it is named for, and is worth more than the listings.
 
 **353 boards · 51,232 jobs · 3,356 open Australian roles · 279 of them data
-roles · 7 ATS adapters · 105 tests**
+roles · 7 ATS adapters · 129 tests**
 
 Browse a snapshot at <https://sidharthjoly.com/ReqTrace/>; ingest health at
 <https://sidharthjoly.com/ReqTrace/runs.html>.
@@ -87,6 +87,9 @@ python scripts/install_autorun.py --publish  # sweep daily at 05:30, then publis
 python scripts/install_autorun.py            # same, without pushing the export
 python scripts/install_autorun.py --status   # is the schedule alive, and what did it do
 python scripts/install_autorun.py --uninstall
+
+python scripts/crawl_careers.py crawl --seeds unresolved --max-pages 400
+python scripts/crawl_careers.py report        # -> data/discovery/crawled_<vendor>.json
 ```
 
 Vendors: `greenhouse`, `ashby`, `smartrecruiters`, `lever`, `workday`,
@@ -455,6 +458,144 @@ exception**: `jobs.lever.co/Zeller` resolves and `/zeller` 404s, so Lever tokens
 keep their case and must never be lowercased. Both `discover_boards.py` and
 `run.py` encode this split.
 
+## Board discovery, part two: an actual crawler
+
+Common Crawl can only find a board it already fetched a URL for **on the ATS's
+own domain**. Three kinds of board are invisible to it by construction, and
+`src/reqtrace/crawl.py` plus `scripts/crawl_careers.py` exist to reach them:
+
+- **Lever.** `candidates_lever.json` from the Common Crawl sweep contains
+  **zero tokens**. That is not a tuning problem; CC barely indexes
+  `jobs.lever.co` at all.
+- **Embeds.** An employer who iframes their board
+  (`boards.greenhouse.io/embed/job_board/js?for=<token>`) never produces a
+  crawlable ATS URL. The token exists only inside *their* HTML, in a query
+  string — and the CC-index regex reads `embed` out of that path and throws the
+  real token away.
+- **Two-part identities.** Workday is `tenant.wdN/Site`, Oracle is
+  `host/CX_1`, Eightfold is `tenant/domain`. None is a path segment, so a URL
+  index has nothing to lift out. `adapters/workday.py` already said these
+  "come from careers-page crawling, never from slug guessing" — this is that
+  crawling. Eightfold is the sharpest case: its identity needs the *employer's*
+  domain, which a URL index never knows and a crawl always does, because it
+  arrived from that employer's own site.
+
+```bash
+uv run python scripts/crawl_careers.py crawl --seeds unresolved --max-pages 400
+uv run python scripts/crawl_careers.py crawl --domain canva.com --max-pages 20
+uv run python scripts/crawl_careers.py crawl --seeds au,global --resume
+uv run python scripts/crawl_careers.py report   # -> data/discovery/crawled_<vendor>.json
+uv run python scripts/discover_boards.py validate --vendor lever   # reads both sources
+```
+
+`report` writes `crawled_<vendor>.json` in exactly the shape `harvest` produces,
+and `validate` reads the **union** of the two. Deliberately separate files: one
+sweep is 6,832 CC tokens and the other a few hundred crawled ones, and neither
+may clobber the other. Nothing here touches `data/discovered_boards.csv`, so the
+append-only adoption rule is protected by construction.
+
+### What makes it finite
+
+A general crawler has no natural stopping point. This one is *focused* in
+Chakrabarti's sense, and three rules bound it:
+
+1. **It starts from employers we already know** — the `domain` and `careers_url`
+   columns Step 0 already collected. `--seeds unresolved` seeds only the 27 rows
+   the audit never resolved, which is where the value is.
+2. **The frontier is a priority queue, not a queue.** `score_link` decides which
+   of a homepage's 300 links is worth one of a finite number of requests:
+   `/about/careers` scores 195, `/blog/2024/why-we-are-hiring` scores 0 despite
+   the word "hiring" in it, and off-site links score 0 because the fingerprints
+   already read them out of the HTML without a request.
+3. **A host is done the moment a fingerprint hits.** One token per employer is
+   the goal, not a site map. This is the rule that turns "crawl the web" into
+   "163 requests for 27 employers".
+
+The unit of discovery is still a board, never a job. Crawling job links would
+rebuild a job board — duplicates, dead links, no closure detection — which is
+the thing this project exists not to be. The crawler finds the door; the
+adapters walk through it.
+
+When a homepage yields no careers-ish link at all (a JS shell), it falls back to
+the conventional paths (`/careers`, `/join-us`, …) and to `sitemap.xml`, which
+robots.txt often declares. Conventions, not guesses at private URLs.
+
+### Politeness is structural, not a flag
+
+robots.txt is fetched and obeyed per host including `Crawl-delay`; requests to
+one host are serialised behind a minimum delay (`--concurrency` is across
+*different* hosts); the User-Agent names the project; responses are
+content-type filtered and byte-capped at 2 MB, streamed so an unexpectedly
+enormous body is truncated rather than downloaded. `--max-pages` is a hard stop
+and defaults low. In the run below, robots.txt disallowed one path and the
+crawler simply did not fetch it. Same line `discover_boards.py` draws: public
+pages, declared identity, **no proxies and no evasion, ever**.
+
+Crawler state is resumable — the seen-set is the part that matters, because a
+resumed crawl that re-fetches what it already has is rude twice over. robots.txt
+is deliberately *not* persisted: it can change, and a fresh process re-reading
+it is the correct behaviour. `--resume` restores per-host page counts too, so it
+picks up unexplored *frontier*, not unexplored hosts: a host that already spent
+its `--max-per-host` budget stays spent. Raise the budget to go deeper on one.
+
+### First live run: the employers Step 0 could never resolve
+
+27 seeds, 163 pages, 13 hosts resolved to a board:
+
+| employer | vendor | token | verdict |
+|---|---|---|---|
+| AustralianSuper | oracle | `ejjl.fa.ap1.oraclecloud.com/CX_1` | **ingested: 39 AU roles** |
+| Suncorp | oracle | `fa-evew-saasfaprod1.fa.ocs.oraclecloud.com/CX_1` | **ingested: 37 AU roles** |
+| ANZ | successfactors | `anzbanking` | no adapter |
+| Macquarie Group | avature | `mgl` | no adapter |
+| CSIRO | successfactors | `CSIRO` | no adapter |
+| Athena Home Loans | bamboohr | `athena` | no adapter |
+| Marketplacer | bamboohr | `marketplacer` | no adapter |
+| National Australia Bank | eightfold | `nab/nab.com.au` | real board, **0 AU roles** |
+
+Both Oracle tokens went straight through the existing adapter — 76 Australian
+roles from two employers Step 0 had left blank, on hosts (`ejjl`,
+`fa-evew-saasfaprod1`) nobody could have guessed.
+
+**NAB is the instructive row, and it is a warning about this table.** The crawl
+found a genuine Eightfold tenant on `careers.nab.com.au`, and it is the wrong
+board: that tenant is the India delivery centre, 0 of 267 roles in Australia.
+NAB's Australian roles sit on a Clinch site behind an AWS WAF challenge, which
+is where this project stops by its own rule. A found token is a *proposal* —
+`validate` drops boards with no AU roles precisely so a confident fingerprint
+cannot become a permanently wrong board in the seed list.
+
+So of eight findings: two are coverage, five are intelligence about which suite
+an employer runs (the precondition for ever writing that adapter), and one is a
+real board that must not be adopted. The crawler cannot tell those apart, and
+does not try to.
+
+And on eight Lever/Greenhouse employers, the crawl produced `Zeller`,
+`immutable`, `q-ctrl` and `eucalyptus` — **`data/discovery/validated_lever.json`
+now exists**, and Common Crawl had produced zero Lever tokens to validate.
+`Zeller` came back with its capital Z intact, which is the whole ballgame:
+`jobs.lever.co/Zeller` resolves and `/zeller` 404s.
+
+### False positives are still validation's job, not the crawler's
+
+KPMG's careers page yielded `smartrecruiters:ni`, which answers
+`200 {"totalFound": 0}` — the vendor's documented trap. `validate` drops boards
+with no jobs, so it never reached the CSV. The crawler's job is to *propose*;
+only a live vendor feed gets to decide a board is real. `plausible_token` is a
+junk filter, not a judgement — it exists to avoid spending a request on
+`bundle.js`, and it keeps its own blocklist separate from
+`discover_boards.py`'s, because HTML junk (asset paths, framework chunks) and
+URL-index junk are different populations.
+
+Findings are keyed on **(vendor, token, seed)**, not on the token alone. `ni` is
+the reason: two employers resolving to one token is either the same employer
+reached under two hosts, or a careers page pointing at a board that isn't
+theirs, and collapsing the rows would make those indistinguishable. The cost is
+that `crawled_<vendor>.json` accumulates monotonically — a junk token proposed
+once costs one validation request on every future sweep. `candidates_*.json`
+from Common Crawl has had the same property since day one; if either file ever
+gets expensive, prune against `validated_*.json`.
+
 ## The UI
 
 ```bash
@@ -508,6 +649,8 @@ scripts/audit_ats.py         slug probe + careers-page fingerprinting
 scripts/audit_followup.py    deep crawl for stragglers, false-positive rejects
 scripts/fetch_fixtures.py    complete board dumps + trimmed test samples
 scripts/discover_boards.py   Common Crawl -> candidate tokens -> validated AU boards
+scripts/crawl_careers.py     focused careers-page crawl -> the tokens CC cannot see
+src/reqtrace/crawl.py       the crawler: robots, frontier, scoring, ATS fingerprints
 scripts/probe_meta.py        one-off: Meta sitemap + JSON-LD sweep (3 AU roles)
 src/reqtrace/search.py      FTS5 / tsvector query layer + filters
 src/reqtrace/runs.py        reads board_runs back: freshness, coverage, failures
@@ -521,6 +664,7 @@ scripts/migrate_to_postgres.py  carries the SQLite history into Postgres
 tests/test_postgres.py       the Postgres path, against a real server
 data/discovered_boards.csv   newly found AU boards, ranked by AU data roles
 fixtures/samples/            committed, test-sized
+fixtures/careers/            the embed shapes careers pages use, for the crawler
 fixtures/raw/                full dumps, git-ignored
 src/reqtrace/adapters/      one module per vendor; failures are isolated
 ```

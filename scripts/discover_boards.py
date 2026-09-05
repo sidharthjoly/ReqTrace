@@ -13,6 +13,13 @@ their URL index for the ATS domains and validate the candidates against the
 vendors' own JSON feeds. Public datasets and documented endpoints only — the
 moment discovery needs proxies or bot evasion, stop.
 
+What that cannot reach is any board Common Crawl never fetched a URL for on the
+ATS's own domain: Lever (barely indexed at all — this sweep yields zero tokens),
+iframed embeds whose token lives in a query string, and the two-part Workday /
+Oracle / Eightfold identities. `scripts/crawl_careers.py` crawls employers'
+careers pages for exactly those, and writes `crawled_<vendor>.json` in the same
+format `harvest` produces. `validate` below reads the union of both.
+
     uv run python scripts/discover_boards.py harvest  --vendor greenhouse
     uv run python scripts/discover_boards.py validate --vendor greenhouse
     uv run python scripts/discover_boards.py report
@@ -247,6 +254,33 @@ def cand_path(vendor: str) -> Path:
     return DISC / f"candidates_{vendor}.json"
 
 
+def crawled_path(vendor: str) -> Path:
+    """Candidates from `scripts/crawl_careers.py` — the focused careers-page
+    crawl. Kept in a separate file from the Common Crawl harvest so neither
+    source can clobber the other; validate reads the union."""
+    return DISC / f"crawled_{vendor}.json"
+
+
+def candidates(vendor: str) -> list[str]:
+    """Every token to validate, from both discovery routes.
+
+    Order matters only for the progress log, but dedup does not fold case here:
+    Lever tokens are case-sensitive, and `report` is where case-variant
+    duplicates for the other three vendors get merged.
+    """
+    seen, out = set(), []
+    for path in (cand_path(vendor), crawled_path(vendor)):
+        if not path.exists():
+            continue
+        found = json.loads(path.read_text())
+        for t in found:
+            if t not in seen:
+                seen.add(t)
+                out.append(t)
+        print(f"  {path.name}: {len(found)} tokens", file=sys.stderr)
+    return out
+
+
 def rows_path(vendor: str) -> Path:
     return DISC / f"validated_{vendor}.json"
 
@@ -270,7 +304,11 @@ async def main() -> int:
         return 0
 
     if args.phase == "validate":
-        tokens = json.loads(cand_path(args.vendor).read_text())
+        tokens = candidates(args.vendor)
+        if not tokens:
+            print(f"no candidates for {args.vendor} — run `harvest`, or "
+                  f"`crawl_careers.py crawl` then `report`", file=sys.stderr)
+            return 1
         if args.limit:
             tokens = tokens[: args.limit]
         print(f"{args.vendor}: validating {len(tokens)} candidates ...", file=sys.stderr)
