@@ -162,8 +162,6 @@ def publish(branch: str = "gh-pages", allow_dirty: bool = False) -> int:
         subprocess.run(["git", "branch", "-D", scratch], cwd=ROOT,
                        capture_output=True)
     print(f"pushed site/ to origin/{branch}")
-    print("GitHub Pages must be pointed at that branch once, under "
-          "Settings -> Pages -> Source")
     return 0
 
 
