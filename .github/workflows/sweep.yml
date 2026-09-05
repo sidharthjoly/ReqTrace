@@ -65,6 +65,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Sweep every board
+        id: sweep
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
@@ -86,7 +87,11 @@ jobs:
           uv run python scripts/export_static.py --publish --allow-dirty
 
       - name: Report what the sweep did
-        if: always()
+        # always(), but only once there is something to report. Plain always()
+        # runs this even when the DATABASE_URL guard aborted the job, where it
+        # fails with "uv: command not found" and buries the real error under a
+        # second, meaningless one.
+        if: always() && steps.sweep.outcome != 'skipped'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
