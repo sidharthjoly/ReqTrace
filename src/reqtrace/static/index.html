@@ -79,8 +79,8 @@
     <select id="vendor"><option value="">All sources</option></select>
   </div>
   <nav>
-    <a href="/" aria-current="page">Search</a>
-    <a href="/runs">Ingest health</a>
+    <a href="index.html" aria-current="page">Search</a>
+    <a href="runs.html">Ingest health</a>
   </nav>
 </div></header>
 
@@ -150,11 +150,109 @@ function card(j) {
   </article>`;
 }
 
+// Two backends behind one page. Served by reqtrace.web it queries /api/search
+// against FTS5; served as a static export (GitHub Pages, or just opening the
+// file) it loads the whole AU set once and filters in the browser. 3,356 rows
+// is small enough that a search library would be ceremony — and it is exactly
+// why the export is AU-only: the full 51k index is 28MB.
+const STATIC = { on: false, jobs: [], data: [], exclude: [], as_of: null };
+
+async function detectStatic() {
+  try {
+    const r = await fetch('data/manifest.json', { cache: 'no-store' });
+    if (!r.ok) return false;
+    const m = await r.json();
+    // The data-role terms come from the export, never retyped here: the server
+    // filter was already subtly wrong once ("Senior Tax Analyst"), and two
+    // copies of it would drift apart on the next fix.
+    STATIC.data = m.data_terms; STATIC.exclude = m.analyst_exclude;
+    STATIC.as_of = m.generated_at;
+    STATIC.jobs = await (await fetch('data/jobs.json')).json();
+    STATIC.on = true;
+    return true;
+  } catch { return false; }
+}
+
+const pad = t => ' ' + (t || '').toLowerCase() + ' ';
+const isDataRole = t => {
+  const s = pad(t);
+  if (STATIC.data.some(x => s.includes(x))) return true;
+  return s.includes('analyst') && !STATIC.exclude.some(x => s.includes(x));
+};
+
+function searchLocal(p) {
+  const q = (p.get('q') || '').toLowerCase().trim();
+  // FTS5 prefix-matches each term; substring matching here is slightly looser.
+  const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+  const cutoff = p.get('days')
+    ? Date.now() - (+p.get('days')) * 864e5 : null;
+
+  let rows = STATIC.jobs.filter(j => {
+    if (p.get('data_only') && !isDataRole(j.title)) return false;
+    if (p.get('has_salary') && j.salary_min == null) return false;
+    if (p.get('remote') && j.remote_type !== p.get('remote')) return false;
+    for (const k of ['city', 'company', 'vendor']) {
+      const want = p.get(k);
+      if (!want) continue;
+      const got = k === 'city' ? j.location_city
+        : k === 'company' ? j.company : j.ats_vendor;
+      if (got !== want) return false;
+    }
+    if (cutoff !== null) {
+      const d = new Date((j.posted_at || j.first_seen_at || '').replace(' ', 'T'));
+      if (!(d >= cutoff)) return false;
+    }
+    if (terms.length) {
+      const hay = `${j.title} ${j.company} ${j.snippet || ''}`.toLowerCase();
+      if (!terms.every(t => hay.includes(t))) return false;
+    }
+    return true;
+  });
+
+  const when = j => new Date((j.posted_at || j.first_seen_at || 0)
+    .toString().replace(' ', 'T')).getTime() || 0;
+  const sort = p.get('sort');
+  if (sort === 'salary') {
+    rows.sort((a, b) => (b.salary_max ?? -Infinity) - (a.salary_max ?? -Infinity)
+      || when(b) - when(a));
+  } else if (sort === 'relevance' && terms.length) {
+    // The server ranks with FTS5 bm25. Approximated here as "how many query
+    // terms hit the title", which is the part of bm25 a reader would notice.
+    const score = j => terms.filter(t => j.title.toLowerCase().includes(t)).length;
+    rows.sort((a, b) => score(b) - score(a) || when(b) - when(a));
+  } else {
+    rows.sort((a, b) => when(b) - when(a));
+  }
+
+  const off = +p.get('offset') || 0;
+  return { total: rows.length, results: rows.slice(off, off + 50),
+           facets: off ? null : localFacets() };
+}
+
+function localFacets() {
+  const top = (key, n) => {
+    const c = new Map();
+    for (const j of STATIC.jobs) {
+      const v = key(j);
+      if (v) c.set(v, (c.get(v) || 0) + 1);
+    }
+    return [...c].sort((a, b) => b[1] - a[1]).slice(0, n)
+      .map(([k, v]) => ({ key: k, n: v }));
+  };
+  return {
+    cities: top(j => j.location_city, 12),
+    companies: top(j => j.company, 15),
+    vendors: top(j => j.ats_vendor, 6),
+    remote: top(j => j.remote_type, 6),
+  };
+}
+
 let timer;
 async function load(more = false) {
   state.offset = more ? state.offset + 50 : 0;
-  const r = await fetch('/api/search?' + params(state.offset));
-  const d = await r.json();
+  const p = params(state.offset);
+  const d = STATIC.on ? searchLocal(p)
+    : await (await fetch('/api/search?' + p)).json();
   state.total = d.total;
   $('#count').textContent = `${d.total.toLocaleString()} matching role${d.total === 1 ? '' : 's'}`;
   const html = d.results.map(card).join('');
@@ -168,7 +266,7 @@ let facetsDone = false;
 function fillFacets(f) {
   if (facetsDone || !f) return;
   facetsDone = true;
-  const fill = (sel, items, label) => {
+  const fill = (sel, items) => {
     const el = $(sel);
     for (const it of items) {
       if (!it.key) continue;
@@ -190,10 +288,32 @@ for (const id of ['#city', '#company', '#vendor', '#sort']) $(id).onchange = () 
 $('#q').oninput = () => { clearTimeout(timer); timer = setTimeout(load, 220); };
 $('#more').onclick = () => load(true);
 
-fetch('/api/stats').then(r => r.json()).then(s => {
-  $('#stats').textContent =
-    `${s.au_open.toLocaleString()} open Australian roles · ${s.boards} employer boards · ` +
-    `${s.vendors} ATS sources · ${s.closed.toLocaleString()} closed and retired`;
+const summarise = s =>
+  `${s.au_open.toLocaleString()} open Australian roles · ${s.boards} employer boards · ` +
+  `${s.vendors} ATS sources · ${s.closed.toLocaleString()} closed and retired`;
+
+detectStatic().then(async isStatic => {
+  if (isStatic) {
+    const m = await (await fetch('data/manifest.json')).json();
+    // A static export is a snapshot, not a live index. Say when it was taken —
+    // without it the page silently claims yesterday's roles are open today.
+    $('#stats').textContent = summarise(m.stats) + ' · exported ' +
+      new Date(m.generated_at).toLocaleString(undefined,
+        { dateStyle: 'medium', timeStyle: 'short' });
+    // The live index searches full descriptions through FTS5; the export
+    // carries a 320-character preview, so a query whose only match is deep in
+    // a body finds nothing here. That is a smaller result set for a reason,
+    // and the page should say which reason rather than look under-populated.
+    const note = document.createElement('div');
+    note.className = 'sub';
+    note.style.marginTop = '8px';
+    note.textContent = 'Static snapshot of open Australian roles. Search covers '
+      + 'titles, employers and description previews — the live index searches '
+      + 'full descriptions.';
+    $('.filters').after(note);
+  } else {
+    $('#stats').textContent = summarise(await (await fetch('/api/stats')).json());
+  }
+  load();
 });
-load();
 </script>

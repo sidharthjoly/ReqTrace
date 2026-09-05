@@ -37,5 +37,20 @@ cd "$ROOT" || exit 1
 "$UV" run --project "$ROOT" python -m reqtrace.run --vendor all \
     ${REQTRACE_ARGS:-} >> "$LOG" 2>&1
 status=$?
+
+# Refresh the static export so site/ always matches the last sweep. Cheap, and
+# it keeps a locally-served snapshot honest. Publishing is deliberately NOT
+# automatic: it pushes to a remote, and a daily unattended push is a bigger
+# commitment than a daily fetch. Set REQTRACE_PUBLISH=1 in the plist to opt in.
+if [ $status -eq 0 ]; then
+    if [ "${REQTRACE_PUBLISH:-0}" = "1" ]; then
+        "$UV" run --project "$ROOT" python scripts/export_static.py --publish \
+            >> "$LOG" 2>&1 || echo "export/publish failed" >> "$LOG"
+    else
+        "$UV" run --project "$ROOT" python scripts/export_static.py \
+            >> "$LOG" 2>&1 || echo "export failed" >> "$LOG"
+    fi
+fi
+
 echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) sweep finished, exit $status ===" >> "$LOG"
 exit $status

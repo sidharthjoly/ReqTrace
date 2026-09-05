@@ -163,6 +163,47 @@ The store now opens SQLite in **WAL**. A full sweep holds write transactions for
 minutes at a time, and under the default rollback journal that locks readers out
 entirely — the UI would fail for the length of every scheduled run.
 
+## Static export
+
+`scripts/export_static.py` writes `site/` — the same two pages, no Python behind
+them.
+
+```bash
+python scripts/export_static.py            # build site/
+python scripts/export_static.py --serve    # build, then browse it on :8766
+python scripts/export_static.py --publish  # force-push site/ to the gh-pages branch
+```
+
+Neither page is a fork of the live UI. They check for `data/manifest.json` on
+load: found means static, and they filter in the browser; absent (the stdlib
+server does not serve it) means live, and they call `/api/*` as before. One
+renderer, one set of filters, two backends. The data-role term lists are
+*exported into the manifest* rather than retyped in JS, so the filter the README
+already got wrong once ("Senior Tax Analyst") cannot drift into two versions.
+
+**Open Australian roles only** — 3,356 rows, ~3MB, well under a megabyte gzipped.
+The full index is 51k rows and 28MB of JSON, which is not a page, it is a
+download.
+
+Two honest limits, both stated on the pages themselves rather than left to be
+discovered:
+
+- **Search is narrower.** The live index runs FTS5 over full descriptions; the
+  export carries a 320-character preview, so a query matching only deep in a body
+  finds nothing. Measured: `data scientist` returns 55 live and 31 static, and
+  the 54 AU roles whose only match is past the preview are exactly the gap.
+- **It is a snapshot.** Stale the moment the next sweep lands, so both pages
+  carry the export timestamp, and `/runs` says outright that its "N hours ago"
+  figures count from the export rather than from now.
+
+The daily sweep re-exports `site/` when it finishes. It does **not** publish:
+that pushes to a remote, and a daily unattended push is a bigger commitment than
+a daily fetch. `REQTRACE_PUBLISH=1` in the plist opts in.
+
+`--publish` force-pushes an orphan commit to `gh-pages` rather than committing
+the export to `main` — the snapshot is regenerable, and 3MB of JSON a day would
+be a gigabyte of git history a year.
+
 ## Closure detection
 
 The headline feature. Every run pulls the *full* board and diffs it against the
@@ -318,7 +359,8 @@ src/reqtrace/runs.py        reads board_runs back: freshness, coverage, failures
 src/reqtrace/web.py         stdlib server, three JSON endpoints
 src/reqtrace/static/        two vanilla HTML pages, no build step
 scripts/install_autorun.py   installs/removes the daily launchd agent
-scripts/autorun.sh           what the agent runs: one --vendor all sweep
+scripts/autorun.sh           what the agent runs: one --vendor all sweep + export
+scripts/export_static.py     site/ — the same pages with no Python behind them
 data/discovered_boards.csv   newly found AU boards, ranked by AU data roles
 fixtures/samples/            committed, test-sized
 fixtures/raw/                full dumps, git-ignored
@@ -533,7 +575,9 @@ is implausible, or its AU hiring is served somewhere this crawl has not found.
    degrades; you have to open the page.
 2. NAB / Macquarie / ANZ still unresolved for AU roles (Avature and
    SuccessFactors respectively; neither exposes a JSON feed found so far)
-2. Deploy: GitHub Actions cron for ingestion, and point `DATABASE_URL` at Neon
+2. Deploy: point `DATABASE_URL` at Neon, then Actions can do ingestion too.
+   Until then the static export is the only thing that leaves this machine, and
+   it leaves as a snapshot rather than a service.
 3. Title → seniority/function via a local model, gated on `content_hash`
    (SmartRecruiters already supplies both, so this is Greenhouse/Ashby only)
 5. Search API over the tsvector index, then the thinnest possible UI

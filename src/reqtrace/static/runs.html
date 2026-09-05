@@ -111,8 +111,8 @@
     the evidence that it is still happening — closure detection is only as
     truthful as the last run.</div>
   <nav>
-    <a href="/">Search</a>
-    <a href="/runs" aria-current="page">Ingest health</a>
+    <a href="index.html">Search</a>
+    <a href="runs.html" aria-current="page">Ingest health</a>
   </nav>
 </div></header>
 
@@ -314,10 +314,23 @@ function recentTable(rows) {
     </tr>`).join('')}</tbody>`;
 }
 
-Promise.all([
-  fetch('/api/runs').then(r => r.json()),
-  fetch('/api/stats').then(r => r.json()).catch(() => null),
-]).then(([d, idx]) => {
+// Same page against either backend: reqtrace.web's /api/runs, or the JSON the
+// static export drops next to it. The run log is 24KB, so the export carries
+// it whole rather than summarising — a health page that hides the raw rows is
+// asking to be trusted rather than checked.
+async function source() {
+  try {
+    const r = await fetch('data/health.json', { cache: 'no-store' });
+    if (r.ok) {
+      const m = await (await fetch('data/manifest.json')).json();
+      return [await r.json(), m.stats, m.generated_at];
+    }
+  } catch { /* served live, fall through */ }
+  return [await (await fetch('/api/runs')).json(),
+          await (await fetch('/api/stats')).json().catch(() => null), null];
+}
+
+source().then(([d, idx, asOf]) => {
   if (d.error) {
     $('#hero').innerHTML = `<div class="big">Cannot read the run log</div>
       <div class="when">${esc(d.error)}</div>`;
@@ -329,5 +342,16 @@ Promise.all([
   problemTable(d.problems);
   churnTable(d.churn);
   recentTable(d.recent);
+  if (asOf) {
+    // On a static export every "N hours ago" on this page is measured from the
+    // export, not from now. Saying so is the difference between a stale page
+    // and a lying one.
+    const el = document.createElement('div');
+    el.className = 'note';
+    el.style.marginTop = '10px';
+    el.textContent = 'Static snapshot exported ' + stamp(asOf) +
+      '. Ages on this page are counted from that moment, not from now.';
+    $('#hero').after(el);
+  }
 });
 </script>
