@@ -279,6 +279,17 @@ the runner sweeps into Postgres; if both publish, the site alternates between
 two different databases with two different `first_seen_at` histories, and the
 series stops meaning anything. Exactly one of them should be authoritative.
 
+**Move the local schedule too.** The installer defaults to 05:30 local and the
+workflow cron is `30 19 * * *` UTC — which *is* 05:30 in Sydney. Follow both
+defaults and the two sweeps fire simultaneously, pulling all 357 boards from
+seven third-party APIs twice at once, which is the shape of a rate-limit that
+breaks both. `install_autorun.py --at 12:30` moves the local one clear.
+
+Once the runner is trusted, the honest answer is to stop the local sweep
+altogether (`install_autorun.py --uninstall`): keeping it means fetching every
+board twice a day for a SQLite copy that drifts further from Postgres with each
+run. `data/jobs.db` remains as the pre-migration snapshot either way.
+
 ### Seeding it: copy, do not re-sweep
 
 `scripts/migrate_to_postgres.py` carries the SQLite rows over with their
