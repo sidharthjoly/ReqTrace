@@ -116,11 +116,14 @@ diffs against the entire open set, so dropping those rows would break it.
 That takes 27k jobs from ~368MB to well inside a Neon/Supabase free tier. Worth
 re-checking once Ashby is added: `bjakcareer` alone is 3,084 jobs.
 
-> **The index currently runs on SQLite, not Postgres.** There's no Postgres on
-> this machine and provisioning Neon needs your account, so `schema_postgres.sql`
-> is written and wired but has never been executed. Treat the Postgres path as
-> untested until someone points a `DATABASE_URL` at it — and note that ingestion
-> honours it while the UI does not yet.
+> **The index still runs on SQLite day to day, but the Postgres path is no
+> longer untested.** `schema_postgres.sql` applies cleanly, ingestion and
+> closure detection are verified against a real server, and
+> `tests/test_postgres.py` pins it down — see "Running it on GitHub instead".
+> Executing it for the first time is what surfaced the BOOLEAN mismatch that
+> would have killed every Postgres ingest on its first board. The live search
+> UI is still SQLite-only; the published site does its searching in the
+> browser, so that no longer blocks deployment.
 
 Schema changes are migrated in place (`Store.MIGRATIONS`), not by recreating the
 database. That matters more than it sounds: the `first_seen_at`/`closed_at`
@@ -230,6 +233,84 @@ the export to `main` — the snapshot is regenerable, and 3MB of JSON a day woul
 be a gigabyte of git history a year. Pushing that branch is what enabled Pages
 in the first place; there was no separate setup step. `jobs.json` is 3.1MB on
 disk and **361KB over the wire**, since Pages gzips it.
+
+## Running it on GitHub instead
+
+`.github/workflows/sweep.yml` does what the launchd agent does — sweep, export,
+publish — on GitHub's runners, so the index no longer depends on one laptop
+being awake. **It is written and tested as far as it can be without a hosted
+database; it has never run on a runner**, because it needs a `DATABASE_URL`
+secret that only you can add.
+
+### Why a database is not optional here
+
+A runner is ephemeral. Closure detection diffs today's full board against the
+**stored** open set, so with no persistent database every job is new every day,
+nothing ever closes, and `first_seen_at` resets — the feature the project is
+named for stops working *while the run still reports success*. That failure
+would then be published over a working site.
+
+So the workflow's first step refuses to start without the secret. Better a red
+X than a green tick over a reset index.
+
+### What you have to do
+
+1. Provision a Postgres (Neon or Supabase free tier is plenty — the index is
+   ~30MB with the AU-only description policy).
+2. Add it as a repo secret named `DATABASE_URL`
+   (Settings → Secrets and variables → Actions).
+3. Seed it once from the laptop, so the history carries over instead of
+   starting from zero:
+   ```bash
+   DATABASE_URL='postgres://…' uv run python -m reqtrace.run --vendor all
+   ```
+   Skip this and the first cloud sweep marks all 51k jobs as new and the
+   `first_seen_at` series restarts.
+4. `gh workflow run "Sweep and publish" -f max_boards=1` to prove it end to end
+   on a few boards before trusting the nightly.
+5. **Then turn off local publishing**, or the two will fight:
+   ```bash
+   python scripts/install_autorun.py --no-publish   # keep sweeping locally
+   python scripts/install_autorun.py --uninstall    # or stop entirely
+   ```
+
+That last step matters more than it looks. The laptop sweeps into SQLite and
+the runner sweeps into Postgres; if both publish, the site alternates between
+two different databases with two different `first_seen_at` histories, and the
+series stops meaning anything. Exactly one of them should be authoritative.
+
+### What the port actually needed
+
+`store.py` already spoke both dialects, but the Postgres half had never been
+executed. Running it turned up:
+
+- `_record_run` passed `1`/`0` into a column declared `BOOLEAN NOT NULL`, so
+  **every** Postgres ingest died on its first board. Now passes the bool, which
+  SQLite stores as 1/0 anyway.
+- `runs.py` was SQLite-only in five places, now a dialect table: `rowid` vs the
+  `BIGSERIAL id`, `complete = 1` vs a real boolean, `sum(predicate)` vs
+  `count(*) FILTER`, `julianday()` vs `EXTRACT(EPOCH …)`, and `substr()` on a
+  text timestamp vs `to_char()` on a `TIMESTAMPTZ`.
+- That last one is pinned to `AT TIME ZONE 'UTC'`. `to_char` otherwise buckets
+  by the *session* timezone, so the same run landed on 2026-09-04 in a UTC-12
+  session and 2026-09-05 in SQLite. A runner is UTC and a laptop is not.
+- `SELECT *` in the window CTE returned different shapes per backend, since the
+  Postgres table has an `id` column the SQLite one lacks. Columns are named now.
+
+`tests/test_postgres.py` covers all of it against a real server, including a
+test that runs the same snapshots through both backends and diffs the health
+payloads. It skips unless `REQTRACE_TEST_DSN` is set, so `pytest` stays green on
+a machine with no Postgres:
+
+```bash
+createdb reqtrace_test
+REQTRACE_TEST_DSN=postgresql:///reqtrace_test uv run pytest    # 113 tests
+uv run pytest                                                  # 105 + 8 skipped
+```
+
+The live search UI is still SQLite-only and that is now mostly moot: the
+published site does its searching in the browser, so the export only has to
+*read rows*, which both backends do.
 
 ## Closure detection
 
@@ -388,6 +469,8 @@ src/reqtrace/static/        two vanilla HTML pages, no build step
 scripts/install_autorun.py   installs/removes the daily launchd agent
 scripts/autorun.sh           what the agent runs: one --vendor all sweep + export
 scripts/export_static.py     site/ — the same pages with no Python behind them
+.github/workflows/sweep.yml  the same sweep on a runner; needs DATABASE_URL
+tests/test_postgres.py       the Postgres path, against a real server
 data/discovered_boards.csv   newly found AU boards, ranked by AU data roles
 fixtures/samples/            committed, test-sized
 fixtures/raw/                full dumps, git-ignored
@@ -602,9 +685,9 @@ is implausible, or its AU hiring is served somewhere this crawl has not found.
    degrades; you have to open the page.
 2. NAB / Macquarie / ANZ still unresolved for AU roles (Avature and
    SuccessFactors respectively; neither exposes a JSON feed found so far)
-2. Deploy: point `DATABASE_URL` at Neon, then Actions can do ingestion too.
-   Until then the static export is the only thing that leaves this machine, and
-   it leaves as a snapshot rather than a service.
+2. Deploy: the Actions workflow and the Postgres port are done and tested;
+   what is left is provisioning Neon and adding the `DATABASE_URL` secret,
+   which needs your account. Until then the laptop is authoritative.
 3. Title → seniority/function via a local model, gated on `content_hash`
    (SmartRecruiters already supplies both, so this is Greenhouse/Ashby only)
 5. Search API over the tsvector index, then the thinnest possible UI

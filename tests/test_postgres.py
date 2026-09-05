@@ -1,0 +1,138 @@
+"""The Postgres path, run against a real server.
+
+Every other test in this suite runs on SQLite, which is exactly how the
+Postgres path stayed broken while looking finished: `schema_postgres.sql` was
+written, wired and never executed, and `_record_run` was passing an integer
+into a BOOLEAN column the whole time. Type errors like that are invisible until
+a server rejects them.
+
+Skipped unless REQTRACE_TEST_DSN points at a throwaway database:
+
+    createdb reqtrace_test
+    REQTRACE_TEST_DSN=postgresql:///reqtrace_test uv run pytest tests/test_postgres.py
+
+The database is emptied between tests, so do not point this at anything real.
+"""
+
+import os
+
+import pytest
+
+from reqtrace import runs
+from reqtrace.models import BoardSnapshot, Job
+from reqtrace.store import Store
+
+DSN = os.environ.get("REQTRACE_TEST_DSN")
+pytestmark = pytest.mark.skipif(
+    not DSN, reason="set REQTRACE_TEST_DSN to a throwaway Postgres to run these")
+
+
+def job(ext_id, title="Data Scientist", h="h1"):
+    return Job(ats_vendor="greenhouse", board_token="acme", external_id=ext_id,
+               title=title, content_hash=h, apply_url=f"https://x/{ext_id}",
+               location_country="AU")
+
+
+def snap(jobs, complete=True, error=None, token="acme"):
+    return BoardSnapshot(ats_vendor="greenhouse", board_token=token,
+                         complete=complete, jobs=jobs, error=error)
+
+
+@pytest.fixture
+def store():
+    s = Store(dsn=DSN)
+    s.init_schema()
+    s.conn.execute("TRUNCATE jobs, board_runs, companies")
+    s.conn.commit()
+    yield s
+    s.close()
+
+
+def test_the_schema_applies(store):
+    assert store.backend == "postgres"
+    tables = {r[0] for r in store.conn.execute(
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public'").fetchall()}
+    assert {"jobs", "board_runs", "companies"} <= tables
+
+
+def test_a_run_is_recorded_at_all(store):
+    # The regression this file exists for: `complete` is BOOLEAN here and
+    # INTEGER on SQLite, so passing 1/0 raised DatatypeMismatch and every
+    # ingest against Postgres died on its first board.
+    store.reconcile(snap([job("1")]))
+    row = store.conn.execute(
+        "SELECT complete, n_fetched FROM board_runs").fetchone()
+    assert row == (True, 1)
+
+
+def test_closure_detection_survives_the_port(store):
+    store.reconcile(snap([job("1"), job("2"), job("3")]))
+    r = store.reconcile(snap([job("1"), job("2")]))
+    assert (r.closed, r.new) == (1, 0)
+
+
+def test_incomplete_board_never_closes_on_postgres(store):
+    store.reconcile(snap([job("1"), job("2")]))
+    r = store.reconcile(snap([job("1")], complete=False))
+    assert r.closed == 0
+
+
+def test_relisted_job_reopens_and_keeps_first_seen(store):
+    store.reconcile(snap([job("1")]))
+    first = store.conn.execute("SELECT first_seen_at FROM jobs").fetchone()[0]
+    store.reconcile(snap([]))
+    store.reconcile(snap([]))          # empty twice before anything retires
+    assert store.conn.execute(
+        "SELECT closed_at FROM jobs").fetchone()[0] is not None
+    r = store.reconcile(snap([job("1")]))
+    assert r.reopened == 1
+    assert store.conn.execute("SELECT first_seen_at FROM jobs").fetchone()[0] == first
+
+
+def test_empty_board_needs_two_runs_before_retiring(store):
+    store.reconcile(snap([job("1")]))
+    r = store.reconcile(snap([]))
+    assert r.closed == 0, "an empty board retired jobs on first sight"
+    r = store.reconcile(snap([]))
+    assert r.closed == 1
+
+
+# -- the query layer ---------------------------------------------------------
+
+def test_every_health_query_runs(store):
+    store.reconcile(snap([job("1"), job("2")]))
+    store.reconcile(snap([job("9")], token="beta", complete=False))
+    h = runs.health(store.conn, backend="postgres")
+    assert h["summary"]["boards"] == 2
+    assert h["summary"]["ok"] == 1 and h["summary"]["incomplete"] == 1
+    assert {v["vendor"] for v in h["vendors"]} == {"greenhouse"}
+    assert len(h["problems"]) == 1 and h["problems"][0]["token"] == "beta"
+    assert h["churn"] and h["recent"]
+
+
+def test_the_two_backends_agree(store, tmp_path):
+    """Same snapshots into both, then diff the health payloads.
+
+    Guards the dialect table: `rowid` vs `id`, boolean vs 1/0, FILTER vs
+    sum(CASE), julianday vs EXTRACT. Any of those silently returning something
+    different would show up here rather than on the published page."""
+    lite = Store(sqlite_path=tmp_path / "cmp.db")
+    lite.init_schema()
+    for s in (store, lite):
+        s.reconcile(snap([job("1"), job("2"), job("3")]))
+        s.reconcile(snap([job("1")], token="beta"))
+        s.reconcile(snap([job("1"), job("2")]))          # closes one
+
+    pg = runs.health(store.conn, backend="postgres")
+    sq = runs.health(lite.conn)
+    lite.close()
+
+    # Timestamps and ordering-by-time will differ; the counts must not.
+    keys = ("boards", "ok", "failed", "incomplete", "stale", "new", "closed",
+            "reopened", "fetched", "ever_run")
+    assert {k: pg["summary"][k] for k in keys} == {k: sq["summary"][k] for k in keys}
+    strip = lambda rows: [  # noqa: E731
+        {k: v for k, v in r.items() if k not in ("last_run", "oldest_run")}
+        for r in rows]
+    assert strip(pg["vendors"]) == strip(sq["vendors"])
+    assert [r["closed"] for r in pg["churn"]] == [r["closed"] for r in sq["churn"]]

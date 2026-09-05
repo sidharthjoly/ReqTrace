@@ -1,0 +1,105 @@
+# Daily sweep on GitHub's runners instead of a laptop.
+#
+# The whole reason this needs a DATABASE_URL: closure detection works by
+# diffing today's full board against the *stored* open set, and a runner is
+# ephemeral. With no persistent database every job looks new every day, nothing
+# ever closes, and first_seen_at resets — the one feature this index exists for
+# stops working while appearing to succeed. So the first step refuses to run
+# without one rather than quietly producing a fresh, wrong index and publishing
+# it over the good one.
+name: Sweep and publish
+
+on:
+  schedule:
+    # 19:30 UTC = 05:30 in Sydney during AEST (06:30 during AEDT — GitHub cron
+    # has no timezone, and an hour of drift does not matter for a daily diff).
+    - cron: "30 19 * * *"
+  workflow_dispatch:
+    inputs:
+      max_boards:
+        description: "Cap boards per vendor (0 = all). Use a small number to test."
+        required: false
+        default: "0"
+      publish:
+        description: "Push the export to gh-pages"
+        type: boolean
+        default: true
+
+concurrency:
+  # Never two sweeps at once: they would interleave writes into the same
+  # database and each would see a half-updated open set to diff against.
+  group: sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    # A full sweep is 357 boards across seven vendors; the local one takes
+    # hours. GitHub's ceiling is 6h, which this must stay under.
+    timeout-minutes: 330
+    permissions:
+      contents: write      # pushes the export to the gh-pages branch
+
+    steps:
+      - name: Refuse to run without a database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::No DATABASE_URL secret. A runner has no persistent" \
+              "storage, so a sweep without one would mark every job new, close" \
+              "nothing, and reset first_seen_at — then publish that over the" \
+              "working site. Add the secret (Settings -> Secrets -> Actions)" \
+              "before enabling this workflow."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Sweep every board
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          uv run python -m reqtrace.run --vendor all \
+            --max-boards "${{ inputs.max_boards || 0 }}"
+
+      - name: Build the static export
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run python scripts/export_static.py
+
+      - name: Publish to gh-pages
+        if: ${{ inputs.publish != false }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          uv run python scripts/export_static.py --publish --allow-dirty
+
+      - name: Report what the sweep did
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          uv run python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import os, psycopg, sys
+          sys.path.insert(0, "src")
+          from reqtrace import runs
+          with psycopg.connect(os.environ["DATABASE_URL"]) as c:
+              c.execute("SET TIME ZONE 'UTC'")
+              s = runs.summary(c, backend="postgres")
+          print(f"| boards | complete | incomplete | failed | stale | new | closed |")
+          print(f"|---|---|---|---|---|---|---|")
+          print(f"| {s['boards']} | {s['ok']} | {s['incomplete']} | {s['failed']} "
+                f"| {s['stale']} | {s['new']} | {s['closed']} |")
+          print(f"\nLast board fetched: {s['last_run']}")
+          PY

@@ -348,7 +348,9 @@ class Store:
             f"INSERT INTO board_runs (ats_vendor, board_token, fetched_at, complete, "
             f"n_fetched, n_new, n_updated, n_closed, n_reopened, error) VALUES "
             f"({', '.join([self.ph] * 10)})",
-            (snap.ats_vendor, snap.board_token, self._now(), 1 if snap.complete else 0,
+            # A Python bool, not 1/0: Postgres declares this column BOOLEAN and
+            # rejects a smallint, while SQLite stores the bool as 1/0 anyway.
+            (snap.ats_vendor, snap.board_token, self._now(), snap.complete,
              res.fetched, res.new, res.updated, res.closed, res.reopened, res.error),
         )
         self.conn.commit()

@@ -33,7 +33,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -61,12 +61,46 @@ WHERE j.closed_at IS NULL AND j.location_country = 'AU'
 """
 
 
-def build(db: Path) -> dict:
+def _connect(db: Path):
+    """Read side of whichever backend holds the index.
+
+    Postgres sessions are pinned to UTC so exported timestamps match the
+    SQLite ones byte for byte — SQLite stores UTC strings, while `to_char` and
+    psycopg would otherwise render whatever the session timezone happens to be,
+    and an Actions runner's timezone is not the laptop's."""
+    dsn = os.environ.get("DATABASE_URL")
+    if dsn:
+        import psycopg
+
+        # Tuple rows, not dict_row on the connection: `search.stats` reads
+        # `fetchone()[0]` positionally, and runs.py opens its own dict cursor
+        # where it needs one. Row shape stays a per-query decision.
+        conn = psycopg.connect(dsn)
+        conn.execute("SET TIME ZONE 'UTC'")
+        return conn, "postgres"
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
+    return conn, "sqlite"
 
-    jobs = [dict(r) for r in conn.execute(JOBS_SQL).fetchall()]
-    health = runs.health(conn)
+
+def _iso(o):
+    """datetime -> ISO 8601 with a T separator. Postgres hands back datetimes
+    where SQLite hands back strings, and `str(datetime)` uses a space, which is
+    not ISO and which the pages would have to paper over."""
+    return o.isoformat() if isinstance(o, (datetime, date)) else str(o)
+
+
+def build(db: Path) -> dict:
+    conn, backend = _connect(db)
+
+    if backend == "postgres":
+        from psycopg.rows import dict_row
+
+        with conn.cursor(row_factory=dict_row) as cur:
+            jobs = [dict(r) for r in cur.execute(JOBS_SQL).fetchall()]
+    else:
+        jobs = [dict(r) for r in conn.execute(JOBS_SQL).fetchall()]
+    health = runs.health(conn, backend=backend)
     stats = search.stats(conn)
     conn.close()
 
@@ -79,6 +113,7 @@ def build(db: Path) -> dict:
 
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "backend": backend,
         "stats": stats,
         "scope": "open roles in Australia",
         "jobs": len(jobs),
@@ -88,7 +123,7 @@ def build(db: Path) -> dict:
         "analyst_exclude": list(search.ANALYST_EXCLUDE),
     }
     write = lambda name, obj: (SITE / "data" / name).write_text(  # noqa: E731
-        json.dumps(obj, separators=(",", ":"), default=str))
+        json.dumps(obj, separators=(",", ":"), default=_iso))
     write("manifest.json", manifest)
     write("jobs.json", jobs)
     write("health.json", health)
@@ -175,8 +210,9 @@ def main() -> int:
                     help="publish even with uncommitted work in the tree")
     args = ap.parse_args()
 
-    if not args.db.exists():
-        print(f"no index at {args.db} — run an ingest first", file=sys.stderr)
+    if not os.environ.get("DATABASE_URL") and not args.db.exists():
+        print(f"no index at {args.db} — run an ingest first, or set DATABASE_URL",
+              file=sys.stderr)
         return 2
 
     m = build(args.db)
