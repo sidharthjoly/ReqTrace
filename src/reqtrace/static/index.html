@@ -4,97 +4,322 @@
 <title>ReqTrace</title>
 <style>
   :root {
-    --bg:#fbfbfa; --panel:#fff; --ink:#1a1a19; --muted:#6b6b66; --line:#e5e4e0;
-    --accent:#2f6f4f; --accent-soft:#e8f1ec; --chip:#f2f1ee; --warn:#8a5a20;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg:#161614; --panel:#1e1e1c; --ink:#eceae5; --muted:#9a978f; --line:#33322e;
-      --accent:#7fc4a0; --accent-soft:#1f2f27; --chip:#272621; --warn:#d9a441;
-    }
+    /* Dark industrial console. The palette is deliberately monochrome: no hue
+       anywhere, so board state and freshness can never be carried by colour
+       alone — they are always a word, a fill weight, or an outline. */
+    --bg:#08080a; --panel:#0b0b0d; --well:#0e0e11; --track:#15151a;
+    --line:#1e1e22; --line-2:#26262a; --line-3:#33333a;
+    --ink:#f2f2f3; --ink-2:#e4e4e6; --dim:#c9c9cd; --muted:#a8a8ad;
+    --faint:#8a8a8f; --fainter:#7a7a7d;
+    --hover:#101014; --active:#141418;
+    /* Barlow is the Industry system's pairing. It is not webfont-loaded: this
+       page also ships as a static export that must work as an opened file, so
+       the stack degrades to whatever condensed face the OS has. The character
+       here is uppercase, letterspacing and weight, which all survive that. */
+    --cond:'Barlow Condensed','Barlow SemiCondensed',ui-sans-serif,system-ui,-apple-system,sans-serif;
+    --body:'Barlow',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink);
-    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
-  header { padding:22px 20px 14px; border-bottom:1px solid var(--line); background:var(--panel); }
-  .wrap { max-width:1000px; margin:0 auto; }
-  h1 { margin:0 0 4px; font-size:19px; letter-spacing:-.01em; }
-  .sub { color:var(--muted); font-size:13px; }
-  .searchrow { display:flex; gap:8px; margin-top:14px; }
-  input[type=search] { flex:1; padding:10px 12px; font-size:15px; color:var(--ink);
-    background:var(--bg); border:1px solid var(--line); border-radius:8px; }
-  input[type=search]:focus { outline:2px solid var(--accent); outline-offset:-1px; }
-  select, button { font:inherit; color:var(--ink); background:var(--panel);
-    border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer; }
-  .filters { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; align-items:center; }
-  .chip { padding:5px 10px; border-radius:999px; background:var(--chip);
-    border:1px solid transparent; font-size:13px; cursor:pointer; user-select:none; }
-  .chip[aria-pressed=true] { background:var(--accent-soft); border-color:var(--accent);
-    color:var(--accent); font-weight:600; }
-  main { max-width:1000px; margin:0 auto; padding:16px 20px 60px; }
-  .count { color:var(--muted); font-size:13px; margin:6px 0 12px; }
-  .job { background:var(--panel); border:1px solid var(--line); border-radius:10px;
-    padding:14px 16px; margin-bottom:10px; }
-  .job h2 { margin:0 0 3px; font-size:16px; font-weight:600; letter-spacing:-.01em; }
-  .job h2 a { color:inherit; text-decoration:none; }
-  .job h2 a:hover { color:var(--accent); text-decoration:underline; }
-  .meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center;
-    color:var(--muted); font-size:13px; }
-  .co { color:var(--ink); font-weight:500; }
-  .badge { font-size:11px; padding:2px 7px; border-radius:5px; background:var(--chip);
-    text-transform:uppercase; letter-spacing:.04em; }
-  .badge.remote { background:var(--accent-soft); color:var(--accent); }
-  .badge.salary { background:var(--accent-soft); color:var(--accent); font-weight:600;
-    text-transform:none; letter-spacing:0; }
-  .badge.fresh { background:var(--accent-soft); color:var(--accent); }
-  .snip { margin-top:7px; color:var(--muted); font-size:13px;
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .empty { padding:40px 0; text-align:center; color:var(--muted); }
-  .more { display:block; width:100%; margin-top:10px; padding:10px; }
-  footer { color:var(--muted); font-size:12px; text-align:center; padding:0 20px 30px; }
-  nav { margin-top:12px; display:flex; gap:6px; }
-  nav a { font-size:13px; padding:5px 11px; border-radius:999px; background:var(--chip);
-    color:var(--ink); text-decoration:none; }
-  nav a[aria-current=page] { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+  html, body { margin:0; background:var(--bg); }
+  body { color:var(--ink); font:14px/1.55 var(--body); }
+  a { color:var(--ink); text-decoration:none; }
+  ::selection { background:var(--ink); color:var(--bg); }
+  *:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+  input::placeholder { color:var(--fainter); }
+
+  .app { min-height:100vh; display:grid; grid-template-columns:minmax(0,232px) minmax(0,1fr); }
+
+  /* ---- sidebar ---- */
+  .side { border-right:1px solid var(--line); background:var(--panel);
+    display:flex; flex-direction:column; position:sticky; top:0;
+    align-self:start; height:100vh; overflow-y:auto; }
+  .brand { padding:20px 18px 16px; border-bottom:1px solid var(--line); }
+  .brand .mark { display:flex; align-items:center; gap:9px; }
+  .brand .name { font-family:var(--cond); font-weight:600; font-size:19px;
+    letter-spacing:.14em; text-transform:uppercase; line-height:1; }
+  .brand .sub { margin-top:7px; font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .nav { padding:14px 10px; display:flex; flex-direction:column; gap:2px; }
+  .nav .h { padding:0 8px 8px; font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--faint); }
+  .nav a { display:flex; align-items:center; gap:10px; padding:8px 9px;
+    border:1px solid transparent; color:var(--muted); font-family:var(--cond);
+    font-weight:600; font-size:14px; letter-spacing:.09em; text-transform:uppercase; }
+  .nav a:hover { background:var(--active); color:#fff; }
+  .nav a[aria-current=page] { background:var(--active); border-color:var(--line-3); color:#fff; }
+  .nav a .ico { display:flex; width:16px; height:16px; flex:none; }
+  .nav a .n { margin-left:auto; font-family:var(--body); font-weight:400; font-size:11px;
+    letter-spacing:0; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .sweep { margin-top:auto; padding:16px 18px; border-top:1px solid var(--line);
+    display:flex; flex-direction:column; gap:10px; }
+  .sweep .h { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); }
+  .sweep .state { display:flex; align-items:center; gap:8px; font-family:var(--cond);
+    font-weight:600; letter-spacing:.09em; text-transform:uppercase; font-size:13px; }
+  .sweep .state i { width:6px; height:6px; background:var(--ink); flex:none; }
+  .sweep .state.is-degraded i { background:var(--muted); }
+  .sweep .state.is-bad i { background:transparent; border:1px solid var(--ink); }
+  .sweep .when { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; line-height:1.5; }
+  .spark { display:flex; gap:1px; height:22px; align-items:flex-end; }
+  .spark span { flex:1; background:var(--ink); min-height:2px; }
+  .spark span.last { background:var(--muted); }
+  .sweep .cap { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); }
+
+  /* ---- header ---- */
+  .col { min-width:0; display:flex; flex-direction:column; }
+  header { border-bottom:1px solid var(--line); background:var(--panel);
+    position:sticky; top:0; z-index:5; }
+  .topbar { display:flex; align-items:center; gap:16px; padding:0 20px; min-height:48px;
+    border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .topbar .t { font-family:var(--cond); font-weight:600; font-size:15px;
+    letter-spacing:.12em; text-transform:uppercase; }
+  .vr { width:1px; height:16px; background:var(--line-2); }
+  .topbar .s { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .topbar .right { margin-left:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .stamp { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; letter-spacing:.06em; }
+  .mode { display:flex; align-items:center; gap:7px; padding:4px 9px; border:1px solid var(--line-2); }
+  .mode i { width:5px; height:5px; background:var(--ink); }
+  .mode span { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+
+  .searchwrap { padding:14px 20px 0; }
+  .findbar { display:flex; border:1px solid var(--line-2); background:var(--well); }
+  /* The bar is one control: it takes the ring, not the borderless input inside it. */
+  .findbar:focus-within { outline:2px solid var(--ink); outline-offset:-1px; }
+  .findbar input:focus-visible { outline:none; }
+  .findbar .ico { display:flex; align-items:center; padding:0 12px;
+    border-right:1px solid var(--line-2); color:var(--muted); }
+  .findbar input { flex:1; min-width:0; background:transparent; border:0; padding:11px 12px;
+    color:var(--ink); font:inherit; font-size:14px; letter-spacing:.01em; }
+  .findbar .hits { display:flex; align-items:center; padding:0 12px;
+    border-left:1px solid var(--line-2); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted); font-variant-numeric:tabular-nums;
+    white-space:nowrap; }
+  .findbar button { border:0; border-left:1px solid var(--line-2); background:var(--ink);
+    color:var(--bg); padding:0 18px; cursor:pointer; font-family:var(--cond);
+    font-weight:600; font-size:14px; letter-spacing:.12em; text-transform:uppercase; }
+  .findbar button:hover { background:#fff; }
+
+  .filters { display:flex; flex-wrap:wrap; gap:8px; padding:12px 0 14px; align-items:center; }
+  .chip { padding:5px 11px; border:1px solid var(--line-2); background:transparent;
+    color:var(--dim); cursor:pointer; font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; user-select:none; display:inline-flex; align-items:center; gap:7px; }
+  .chip:hover { border-color:var(--fainter); }
+  .chip i { width:5px; height:5px; background:var(--faint); }
+  .chip[aria-pressed=true] { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .chip[aria-pressed=true] i { background:var(--bg); }
+  .sel { display:inline-flex; align-items:center; gap:8px; padding:5px 11px;
+    border:1px solid var(--line-2); background:var(--well); font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+  .sel .k { color:var(--faint); }
+  .sel select { appearance:none; -webkit-appearance:none; background:transparent; border:0;
+    color:var(--dim); font:inherit; letter-spacing:.1em; text-transform:uppercase;
+    cursor:pointer; padding:0 14px 0 0; max-width:15ch;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23a8a8ad' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right center; }
+  .sel select option { background:var(--panel); color:var(--ink); text-transform:none;
+    letter-spacing:0; }
+
+  /* ---- main ---- */
+  main { padding:20px; display:flex; flex-direction:column; gap:20px; min-width:0; }
+  /* The 1px gap is the grid: the wrapper's background shows through as rules,
+     so the cells never need borders of their own. */
+  .tiles { display:grid; gap:1px; background:var(--line); border:1px solid var(--line);
+    grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .tile { position:relative; background:var(--panel); padding:14px 16px 15px; }
+  .tile .k { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .tile .v { font-family:var(--cond); font-weight:600; font-size:34px; line-height:1.05;
+    letter-spacing:-.01em; font-variant-numeric:tabular-nums; margin-top:6px; }
+  .tile .v.quiet { color:var(--faint); }
+  .tile .sub { font-size:11px; color:var(--faint); margin-top:3px; font-variant-numeric:tabular-nums; }
+  /* Registration mark — the one ornament the Industry system asks for. */
+  .tile::after { content:''; position:absolute; top:6px; right:6px; width:5px; height:5px;
+    border-top:1px solid var(--line-3); border-right:1px solid var(--line-3); }
+
+  .panel { border:1px solid var(--line); background:var(--panel); min-width:0; }
+  .panel-h { padding:11px 16px; border-bottom:1px solid var(--line); font-size:10px;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .panel-h .note { font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums;
+    letter-spacing:.06em; text-transform:none; }
+  .panel-h .r { margin-left:auto; font-size:10px; letter-spacing:.14em; color:var(--faint); }
+
+  .jobs { display:flex; flex-direction:column; gap:1px; background:var(--line);
+    border:1px solid var(--line); }
+  .jobs > * { background:var(--panel); }
+  .job { padding:14px 16px; display:grid; grid-template-columns:minmax(0,1fr) auto;
+    gap:6px 20px; align-items:start; }
+  .job:hover { background:var(--hover); }
+  .job .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .job h2 { margin:0; font-family:var(--cond); font-weight:600; font-size:19px;
+    letter-spacing:.01em; }
+  .job h2 a:hover { color:#fff; text-decoration:underline; }
+  .fresh { font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:2px 7px;
+    background:var(--ink); color:var(--bg); font-weight:500; }
+  .meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:5px;
+    font-size:12px; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .meta .co { color:var(--ink-2); letter-spacing:.06em; text-transform:uppercase; font-size:11px; }
+  .meta .sep { width:1px; height:11px; background:var(--line-2); }
+  .tag { font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:1px 6px;
+    border:1px solid var(--line-3); color:var(--dim); }
+  .snip { margin-top:8px; font-size:13px; color:var(--faint); max-width:78ch;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden; text-wrap:pretty; }
+  .rail { display:flex; flex-direction:column; align-items:flex-end; gap:7px; text-align:right; }
+  .pay { font-family:var(--cond); font-weight:600; font-size:16px; letter-spacing:.04em;
+    font-variant-numeric:tabular-nums; }
+  .req { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint);
+    font-family:var(--mono); max-width:18ch; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; }
+  .apply { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line-3);
+    padding:5px 11px; font-family:var(--cond); font-weight:600; font-size:12px;
+    letter-spacing:.12em; text-transform:uppercase; }
+  .apply:hover { background:var(--ink); color:var(--bg); }
+  .more { display:block; width:100%; border:0; background:var(--panel); padding:11px 16px;
+    text-align:center; font-family:var(--cond); font-weight:600; font-size:13px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--faint); cursor:pointer; }
+  .more:hover { color:#fff; }
+  .empty { padding:40px 16px; text-align:center; color:var(--faint); font-size:13px; }
+
+  .split { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
+  .split > * { flex:1 1 320px; }
+  .bars { padding:14px 16px; display:flex; flex-direction:column; gap:9px; }
+  .bars .row { display:grid; grid-template-columns:96px minmax(0,1fr) 52px; gap:12px;
+    align-items:center; }
+  .bars .nm { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bars .track { height:7px; background:var(--track); }
+  .bars .fill { height:7px; background:var(--ink); }
+  .bars .n { font-size:12px; color:var(--faint); text-align:right; font-variant-numeric:tabular-nums; }
+  .prov { padding:14px 16px; display:flex; flex-direction:column; gap:11px; font-size:12px;
+    color:var(--faint); line-height:1.6; }
+  .prov .kv { display:flex; justify-content:space-between; gap:12px; }
+  .prov .kv .k { letter-spacing:.1em; text-transform:uppercase; font-size:11px; color:var(--faint); }
+  .prov .kv .v { color:var(--ink-2); text-align:right; }
+  .prov .hr { height:1px; background:var(--line); }
+  .prov p { margin:0; text-wrap:pretty; }
+
+  footer { padding:6px 0 24px; font-size:11px; color:var(--faint); letter-spacing:.06em;
+    display:flex; gap:16px; flex-wrap:wrap; }
+  footer .path { margin-left:auto; font-family:var(--mono); }
+
+  @media (max-width:900px) {
+    .app { grid-template-columns:minmax(0,1fr); }
+    .side { position:static; height:auto; border-right:0;
+      border-bottom:1px solid var(--line); }
+    .sweep { margin-top:0; }
+    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .job { grid-template-columns:minmax(0,1fr); }
+    .rail { align-items:flex-start; text-align:left; }
+  }
 </style>
 
-<header><div class="wrap">
-  <h1>ReqTrace</h1>
-  <div class="sub" id="stats">loading index…</div>
-  <div class="searchrow">
-    <input type="search" id="q" placeholder="data scientist, causal inference, forecasting…" autofocus>
-    <select id="sort">
-      <option value="newest">Newest</option>
-      <option value="relevance">Relevance</option>
-      <option value="salary">Salary</option>
-    </select>
-  </div>
-  <div class="filters">
-    <span class="chip" id="f-data" aria-pressed="true">Data roles</span>
-    <span class="chip" id="f-salary" aria-pressed="false">Has salary</span>
-    <span class="chip" id="f-remote" aria-pressed="false">Remote only</span>
-    <span class="chip" id="f-fresh" aria-pressed="false">New this week</span>
-    <select id="city"><option value="">All cities</option></select>
-    <select id="company"><option value="">All employers</option></select>
-    <select id="vendor"><option value="">All sources</option></select>
-  </div>
-  <nav>
-    <a href="index.html" aria-current="page">Search</a>
-    <a href="runs.html">Ingest health</a>
-  </nav>
-</div></header>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 12h18"></path><path d="M12 3v18"></path></svg>
+        <div class="name">ReqTrace</div>
+      </div>
+      <div class="sub">AU requisition index · v0.1</div>
+    </div>
+    <nav class="nav">
+      <div class="h">Console</div>
+      <a href="index.html" aria-current="page">
+        <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg></span>
+        <span>Search</span><span class="n" id="nav-search">—</span>
+      </a>
+      <a href="runs.html">
+        <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg></span>
+        <span>Ingest</span><span class="n" id="nav-runs">—</span>
+      </a>
+    </nav>
+    <div class="sweep" id="sweep" hidden>
+      <div class="h">Sweep</div>
+      <div class="state" id="sweep-state"></div>
+      <div class="when" id="sweep-when"></div>
+      <div class="spark" id="sweep-spark"></div>
+      <div class="cap" id="sweep-cap"></div>
+    </div>
+  </aside>
 
-<main>
-  <div class="count" id="count"></div>
-  <div id="results"></div>
-  <button class="more" id="more" hidden>Load more</button>
-</main>
-<footer>Pulled straight from employers' ATS feeds — one record per requisition,
-apply links go to the employer. Roles that close disappear on the next run.</footer>
+  <div class="col">
+    <header>
+      <div class="topbar">
+        <div class="t">Requisition search</div>
+        <div class="vr"></div>
+        <div class="s" id="stats">loading index…</div>
+        <div class="right">
+          <div class="stamp" id="stamp"></div>
+          <div class="mode"><i></i><span id="mode">Live index</span></div>
+        </div>
+      </div>
+      <div class="searchwrap">
+        <div class="findbar">
+          <div class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg></div>
+          <input type="search" id="q" placeholder="title, employer, description · FTS5 prefix match" autofocus>
+          <div class="hits" id="count"></div>
+          <button id="go">Query</button>
+        </div>
+        <div class="filters">
+          <span class="chip" id="f-data" role="button" tabindex="0" aria-pressed="true"><i></i>Data roles</span>
+          <span class="chip" id="f-salary" role="button" tabindex="0" aria-pressed="false"><i></i>Has salary</span>
+          <span class="chip" id="f-remote" role="button" tabindex="0" aria-pressed="false"><i></i>Remote only</span>
+          <span class="chip" id="f-fresh" role="button" tabindex="0" aria-pressed="false"><i></i>New this week</span>
+          <div class="vr"></div>
+          <span class="sel"><span class="k">City</span><select id="city" aria-label="City"><option value="">All</option></select></span>
+          <span class="sel"><span class="k">Employer</span><select id="company" aria-label="Employer"><option value="">All</option></select></span>
+          <span class="sel"><span class="k">Source</span><select id="vendor" aria-label="Source"><option value="">All</option></select></span>
+          <span class="sel"><span class="k">Sort</span><select id="sort" aria-label="Sort">
+            <option value="newest">Newest</option>
+            <option value="relevance">Relevance</option>
+            <option value="salary">Salary</option>
+          </select></span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="tiles" id="tiles"></div>
+
+      <div class="jobs">
+        <div class="panel-h">
+          <span>Requisitions</span>
+          <span class="note" id="sortnote"></span>
+          <span class="r" id="range"></span>
+        </div>
+        <div id="results"></div>
+        <button class="more" id="more" hidden>Load next 50</button>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <div class="panel-h">Open AU roles by city</div>
+          <div class="bars" id="cities"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">Index provenance</div>
+          <div class="prov">
+            <div class="kv"><span class="k">Identity</span><span class="v">ATS requisition id — one record per role</span></div>
+            <div class="kv"><span class="k">Closure</span><span class="v">full-board diff, complete snapshots only</span></div>
+            <div class="kv"><span class="k">Search scope</span><span class="v" id="scope">titles, employers, full descriptions</span></div>
+            <div class="hr"></div>
+            <p id="prov-note">Pulled straight from employers' ATS feeds; apply links go to
+              the employer. Roles that close disappear on the next run.</p>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <span>One record per requisition · apply links resolve to the employer · closed roles disappear on the next sweep</span>
+        <span class="path">data/logs/ingest.log</span>
+      </footer>
+    </main>
+  </div>
+</div>
 
 <script>
 const $ = s => document.querySelector(s);
-const state = { offset: 0, total: 0 };
+const state = { offset: 0, total: 0, shown: 0 };
 
 function params(offset = 0) {
   const p = new URLSearchParams();
@@ -130,23 +355,37 @@ const money = j => {
   return `${cur}${range}${j.salary_period ? '/' + j.salary_period : ''}`;
 };
 
-const esc = s => (s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const esc = s => (s ?? '').toString().replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const n = v => (v ?? 0).toLocaleString();
 
 function card(j) {
   const d = daysAgo(j);
   const where = [j.location_city, j.location_country].filter(Boolean).join(', ') || j.location_raw || '—';
   const sal = money(j);
+  const fresh = d !== null && d <= 7;
   return `<article class="job">
-    <h2><a href="${esc(j.apply_url)}" target="_blank" rel="noopener">${esc(j.title)}</a></h2>
-    <div class="meta">
-      <span class="co">${esc(j.company)}</span><span>·</span><span>${esc(where)}</span>
-      ${j.remote_type && j.remote_type !== 'unknown' ? `<span class="badge ${j.remote_type === 'remote' ? 'remote' : ''}">${j.remote_type}</span>` : ''}
-      ${sal ? `<span class="badge salary">${esc(sal)}</span>` : ''}
-      ${d !== null && d <= 7 ? `<span class="badge fresh">${ago(d)}</span>`
-        : (d !== null ? `<span>${ago(d)}</span>` : '')}
-      ${j.seniority && j.seniority !== 'Not Applicable' ? `<span>${esc(j.seniority)}</span>` : ''}
+    <div>
+      <div class="head">
+        <h2><a href="${esc(j.apply_url)}" target="_blank" rel="noopener">${esc(j.title)}</a></h2>
+        ${fresh ? `<span class="fresh">${esc(ago(d))}</span>` : ''}
+      </div>
+      <div class="meta">
+        <span class="co">${esc(j.company)}</span>
+        <span class="sep"></span>
+        <span>${esc(where)}</span>
+        ${j.remote_type && j.remote_type !== 'unknown' ? `<span class="tag">${esc(j.remote_type)}</span>` : ''}
+        ${j.seniority && j.seniority !== 'Not Applicable' ? `<span>${esc(j.seniority)}</span>` : ''}
+        ${!fresh && d !== null ? `<span>${esc(ago(d))}</span>` : ''}
+      </div>
+      ${j.snippet ? `<div class="snip">${esc(j.snippet)}</div>` : ''}
     </div>
-    ${j.snippet ? `<div class="snip">${esc(j.snippet)}</div>` : ''}
+    <div class="rail">
+      ${sal ? `<span class="pay">${esc(sal)}</span>` : ''}
+      <span class="req" title="${esc(j.ats_vendor)}:${esc(j.board_token)}">${esc(j.external_id)}</span>
+      <a class="apply" href="${esc(j.apply_url)}" target="_blank" rel="noopener">Apply
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg>
+      </a>
+    </div>
   </article>`;
 }
 
@@ -247,18 +486,27 @@ function localFacets() {
   };
 }
 
+const SORT_NOTE = { newest: 'SORTED BY POSTED_AT DESC',
+  relevance: 'RANKED BY FTS5 BM25', salary: 'SORTED BY SALARY_MAX DESC' };
+
 let timer;
 async function load(more = false) {
   state.offset = more ? state.offset + 50 : 0;
   const p = params(state.offset);
+  const t0 = performance.now();
   const d = STATIC.on ? searchLocal(p)
     : await (await fetch('/api/search?' + p)).json();
+  const ms = Math.max(Math.round(performance.now() - t0), 1);
   state.total = d.total;
-  $('#count').textContent = `${d.total.toLocaleString()} matching role${d.total === 1 ? '' : 's'}`;
+  state.shown = more ? state.shown + d.results.length : d.results.length;
+  $('#count').textContent = `${n(d.total)} hit${d.total === 1 ? '' : 's'} · ${ms} ms`;
+  $('#sortnote').textContent = `${n(d.total)} OPEN · ${SORT_NOTE[$('#sort').value] || ''}`;
+  $('#range').textContent = d.total ? `1–${n(state.shown)} of ${n(d.total)}` : '';
   const html = d.results.map(card).join('');
   $('#results').innerHTML = more ? $('#results').innerHTML + html : (html ||
     '<div class="empty">Nothing matches. Try dropping a filter.</div>');
   $('#more').hidden = state.offset + d.results.length >= d.total;
+  $('#nav-search').textContent = n(d.total);
   if (!more) fillFacets(d.facets);
 }
 
@@ -276,44 +524,145 @@ function fillFacets(f) {
     }
   };
   fill('#city', f.cities); fill('#company', f.companies); fill('#vendor', f.vendors);
+  cityBars(f.cities);
+}
+
+function cityBars(cities) {
+  const rows = (cities || []).filter(c => c.key).slice(0, 6);
+  if (!rows.length) { $('#cities').innerHTML = '<div class="n">—</div>'; return; }
+  const max = rows[0].n || 1;
+  $('#cities').innerHTML = rows.map(c => `<div class="row">
+    <div class="nm" title="${esc(c.key)}">${esc(c.key)}</div>
+    <div class="track"><div class="fill" style="width:${Math.round(c.n / max * 100)}%"></div></div>
+    <div class="n">${n(c.n)}</div>
+  </div>`).join('');
+}
+
+// Index-wide figures, not filter-scoped: fetched once and cached. On the live
+// backend each /api/search builds a full facet rollup regardless of limit, so
+// these must not be refetched on every keystroke.
+async function indexFigures() {
+  if (STATIC.on) {
+    const day = 864e5, now = Date.now();
+    const at = j => new Date((j.posted_at || j.first_seen_at || '').replace(' ', 'T')).getTime();
+    let today = 0, week = 0, salary = 0;
+    for (const j of STATIC.jobs) {
+      const t = at(j);
+      if (t >= now - day) today++;
+      if (t >= now - 7 * day) week++;
+      if (j.salary_min != null) salary++;
+    }
+    return { today, week, salary };
+  }
+  const count = async q => {
+    try { return (await (await fetch('/api/search?limit=1&' + q)).json()).total; }
+    catch { return null; }
+  };
+  const [today, week, salary] = await Promise.all(
+    [count('days=1'), count('days=7'), count('has_salary=1')]);
+  return { today, week, salary };
+}
+
+function tiles(s, fig) {
+  const t = [
+    ['Open AU roles', n(s.au_open), `of ${n(s.jobs ?? s.open)} indexed`],
+    ['Data roles', n(state.total), 'current filter'],
+    ['Posted today', fig.today == null ? '—' : n(fig.today),
+      fig.week == null ? '' : `${n(fig.week)} this week`],
+    ['With salary', fig.salary == null ? '—' : n(fig.salary), 'structured bands only'],
+    ['Employer boards', n(s.boards), `${n(s.vendors)} ATS adapters`],
+    ['Closed & retired', n(s.closed), 'traced since first sweep', true],
+  ];
+  $('#tiles').innerHTML = t.map(([k, v, sub, quiet]) => `<div class="tile">
+    <div class="k">${esc(k)}</div>
+    <div class="v${quiet ? ' quiet' : ''}">${v}</div>
+    <div class="sub">${esc(sub)}</div>
+  </div>`).join('');
+}
+
+// The sidebar's sweep block is real run-log data, not decoration. The search
+// page has no other dependency on the run log, so a missing or failed health
+// fetch hides the block rather than inventing a state or breaking search.
+async function sweep() {
+  let d = null;
+  try {
+    const r = await fetch('data/health.json', { cache: 'no-store' });
+    if (r.ok) d = await r.json();
+  } catch { /* fall through to the live endpoint */ }
+  if (!d) {
+    try { d = await (await fetch('/api/runs')).json(); } catch { return; }
+  }
+  if (!d || d.error || !d.summary || !d.summary.ever_run) return;
+  const s = d.summary;
+  $('#nav-runs').textContent = n(s.boards);
+  const h = s.last_run ? (Date.now() - new Date(s.last_run.replace(' ', 'T'))) / 36e5 : null;
+  const bad = s.failed > 0 || (h !== null && h > s.stale_hours);
+  const level = bad ? 'bad' : (s.incomplete > 0 || s.stale > 0) ? 'degraded' : 'ok';
+  const label = level === 'ok' ? 'Healthy' : level === 'degraded' ? 'Degraded' : 'Stalled';
+  $('#sweep-state').className = 'state is-' + level;
+  $('#sweep-state').innerHTML = `<i></i>${label}`;
+  const age = h === null ? 'never' : h < 1 ? Math.max(Math.round(h * 60), 1) + ' min ago'
+    : h < 48 ? Math.round(h) + 'h ago' : Math.round(h / 24) + 'd ago';
+  $('#sweep-when').innerHTML = `Last board ${esc(age)}<br>A board unseen for ${s.stale_hours}h is stale`;
+  const recent = (d.recent || []).slice(0, 24).reverse();
+  if (recent.length) {
+    const max = Math.max(...recent.map(r => r.fetched || 0), 1);
+    $('#sweep-spark').innerHTML = recent.map((r, i) =>
+      `<span class="${i === recent.length - 1 ? 'last' : ''}" style="height:${
+        Math.max(Math.round((r.fetched || 0) / max * 22), 2)}px"></span>`).join('');
+    $('#sweep-cap').textContent = `${recent.length} board fetches`;
+  }
+  $('#sweep').hidden = false;
 }
 
 for (const id of ['#f-data', '#f-salary', '#f-remote', '#f-fresh']) {
-  $(id).onclick = e => {
-    e.target.ariaPressed = e.target.ariaPressed === 'true' ? 'false' : 'true';
+  const el = $(id);
+  const toggle = () => {
+    el.ariaPressed = el.ariaPressed === 'true' ? 'false' : 'true';
     load();
   };
+  el.onclick = toggle;
+  el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
 }
 for (const id of ['#city', '#company', '#vendor', '#sort']) $(id).onchange = () => load();
+// The Query button submits immediately; typing still searches on its own after
+// a beat, so the button is a shortcut past the debounce, not the only way in.
 $('#q').oninput = () => { clearTimeout(timer); timer = setTimeout(load, 220); };
+$('#go').onclick = () => { clearTimeout(timer); load(); };
+$('#q').onkeydown = e => { if (e.key === 'Enter') { clearTimeout(timer); load(); } };
 $('#more').onclick = () => load(true);
 
 const summarise = s =>
-  `${s.au_open.toLocaleString()} open Australian roles · ${s.boards} employer boards · ` +
-  `${s.vendors} ATS sources · ${s.closed.toLocaleString()} closed and retired`;
+  `${n(s.au_open)} open AU roles · ${n(s.boards)} boards · ${n(s.vendors)} adapters`;
+
+const stampOf = iso => new Date(iso).toLocaleString(undefined,
+  { dateStyle: 'medium', timeStyle: 'short' });
 
 detectStatic().then(async isStatic => {
+  const s = isStatic
+    ? (await (await fetch('data/manifest.json')).json()).stats
+    : await (await fetch('/api/stats')).json();
+  $('#stats').textContent = summarise(s);
+
   if (isStatic) {
-    const m = await (await fetch('data/manifest.json')).json();
     // A static export is a snapshot, not a live index. Say when it was taken —
     // without it the page silently claims yesterday's roles are open today.
-    $('#stats').textContent = summarise(m.stats) + ' · exported ' +
-      new Date(m.generated_at).toLocaleString(undefined,
-        { dateStyle: 'medium', timeStyle: 'short' });
+    $('#mode').textContent = 'Static export';
+    $('#stamp').textContent = 'SNAPSHOT ' + stampOf(STATIC.as_of);
     // The live index searches full descriptions through FTS5; the export
     // carries a 320-character preview, so a query whose only match is deep in
     // a body finds nothing here. That is a smaller result set for a reason,
     // and the page should say which reason rather than look under-populated.
-    const note = document.createElement('div');
-    note.className = 'sub';
-    note.style.marginTop = '8px';
-    note.textContent = 'Static snapshot of open Australian roles. Search covers '
-      + 'titles, employers and description previews — the live index searches '
-      + 'full descriptions.';
-    $('.filters').after(note);
+    $('#scope').textContent = 'titles, employers, 320-char previews';
+    $('#prov-note').textContent = "Pulled straight from employers' ATS feeds; apply "
+      + 'links go to the employer. Roles that close disappear on the next run. The '
+      + 'live index searches full descriptions — this snapshot searches previews.';
   } else {
-    $('#stats').textContent = summarise(await (await fetch('/api/stats')).json());
+    $('#stamp').textContent = 'LIVE ' + stampOf(Date.now());
   }
-  load();
+
+  await load();
+  tiles(s, await indexFigures());
+  sweep();
 });
 </script>
