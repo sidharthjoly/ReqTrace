@@ -44,7 +44,7 @@ status=$?
 # commitment than a daily fetch. Set REQTRACE_PUBLISH=1 in the plist to opt in.
 if [ $status -eq 0 ]; then
     if [ "${REQTRACE_PUBLISH:-0}" = "1" ]; then
-        "$UV" run --project "$ROOT" python scripts/export_static.py --publish \
+        "$UV" run --project "$ROOT" python scripts/export_static.py --publish --allow-dirty \
             >> "$LOG" 2>&1 || echo "export/publish failed" >> "$LOG"
     else
         "$UV" run --project "$ROOT" python scripts/export_static.py \

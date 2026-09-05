@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -101,14 +102,22 @@ def size_report() -> None:
             print(f"  {f.relative_to(SITE)!s:24} {f.stat().st_size / 1e3:>9.1f} KB")
 
 
-def publish(branch: str = "gh-pages") -> int:
+def publish(branch: str = "gh-pages", allow_dirty: bool = False) -> int:
     """Push `site/` to an orphan branch, one commit deep.
 
     An orphan commit each time rather than a history: the export is a
     regenerable snapshot, and 3MB of JSON committed daily would be a gigabyte
-    of git history a year. `main` never carries the data at all."""
-    if subprocess.run(["git", "diff", "--quiet"], cwd=ROOT).returncode:
-        print("working tree is dirty — commit or stash before publishing",
+    of git history a year. `main` never carries the data at all.
+
+    The dirty-tree check is a courtesy for the interactive case — "you have
+    uncommitted work, did you mean to ship this?" — not a correctness one: the
+    orphan worktree is built from `site/`, which was just regenerated, and
+    never reads the working tree. The scheduled sweep passes `--allow-dirty`
+    because otherwise any unrelated work in progress silently skips the daily
+    publish."""
+    if not allow_dirty and subprocess.run(["git", "diff", "--quiet"],
+                                          cwd=ROOT).returncode:
+        print("working tree is dirty — commit, stash, or pass --allow-dirty",
               file=sys.stderr)
         return 1
     # Outside the repo entirely: git refuses some operations on a worktree
@@ -121,9 +130,14 @@ def publish(branch: str = "gh-pages") -> int:
     if r.returncode:
         print(r.stderr.strip(), file=sys.stderr)
         return 1
+    # A throwaway branch name, not `branch` itself: `checkout --orphan` refuses
+    # a name that already exists, and the first publish would otherwise leave a
+    # local gh-pages ref behind that makes every later run fail. Only found by
+    # running the scheduled path twice.
+    scratch = f"pages-export-{os.getpid()}"
     try:
-        subprocess.run(["git", "checkout", "--orphan", branch], cwd=tmp, check=True,
-                       capture_output=True)
+        subprocess.run(["git", "checkout", "--orphan", scratch], cwd=tmp,
+                       check=True, capture_output=True)
         subprocess.run(["git", "rm", "-rf", "."], cwd=tmp, check=True,
                        capture_output=True)
         for item in SITE.iterdir():
@@ -133,14 +147,20 @@ def publish(branch: str = "gh-pages") -> int:
         stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         subprocess.run(["git", "commit", "-q", "-m", f"Export {stamp}"],
                        cwd=tmp, check=True)
+        # GIT_TERMINAL_PROMPT=0 so an unattended run (REQTRACE_PUBLISH=1 from
+        # the launchd agent) fails with an error instead of blocking forever on
+        # a credential prompt nobody is there to answer.
         subprocess.run(["git", "push", "-f", "origin", f"HEAD:{branch}"],
-                       cwd=tmp, check=True)
+                       cwd=tmp, check=True,
+                       env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
     except subprocess.CalledProcessError as e:
         print(f"publish failed: {e}", file=sys.stderr)
         return 1
     finally:
         subprocess.run(["git", "worktree", "remove", "--force", str(tmp)],
                        cwd=ROOT, capture_output=True)
+        subprocess.run(["git", "branch", "-D", scratch], cwd=ROOT,
+                       capture_output=True)
     print(f"pushed site/ to origin/{branch}")
     print("GitHub Pages must be pointed at that branch once, under "
           "Settings -> Pages -> Source")
@@ -153,6 +173,8 @@ def main() -> int:
     ap.add_argument("--serve", action="store_true", help="serve site/ on :8766")
     ap.add_argument("--publish", action="store_true",
                     help="force-push site/ to the gh-pages branch")
+    ap.add_argument("--allow-dirty", action="store_true",
+                    help="publish even with uncommitted work in the tree")
     args = ap.parse_args()
 
     if not args.db.exists():
@@ -165,7 +187,7 @@ def main() -> int:
     size_report()
 
     if args.publish:
-        return publish()
+        return publish(allow_dirty=args.allow_dirty)
     if args.serve:
         import http.server, functools  # noqa: E401
         handler = functools.partial(http.server.SimpleHTTPRequestHandler,

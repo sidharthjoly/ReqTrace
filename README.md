@@ -207,7 +207,15 @@ discovered:
 
 The daily sweep re-exports `site/` when it finishes. It does **not** publish:
 that pushes to a remote, and a daily unattended push is a bigger commitment than
-a daily fetch. `REQTRACE_PUBLISH=1` in the plist opts in.
+a daily fetch. `REQTRACE_PUBLISH=1` in the plist opts in — tested end to end
+from a bare launchd-style environment, twice in a row, which is how the two bugs
+in that path were found. The first was that `checkout --orphan` refuses a branch
+name that already exists, so the *second* publish failed and every one after it
+would have; the scratch branch is now per-process and deleted afterwards. The
+second was the dirty-tree guard: it is a courtesy for the interactive case, not
+a correctness one (the orphan worktree is built from `site/` and never reads the
+working tree), so the scheduled path passes `--allow-dirty` rather than skipping
+the publish whenever there is unrelated work in progress.
 
 `--publish` force-pushes an orphan commit to `gh-pages` rather than committing
 the export to `main` — the snapshot is regenerable, and 3MB of JSON a day would
