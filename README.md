@@ -652,6 +652,7 @@ scripts/discover_boards.py   Common Crawl -> candidate tokens -> validated AU bo
 scripts/crawl_careers.py     focused careers-page crawl -> the tokens CC cannot see
 src/reqtrace/crawl.py       the crawler: robots, frontier, scoring, ATS fingerprints
 scripts/probe_meta.py        one-off: Meta sitemap + JSON-LD sweep (3 AU roles)
+scripts/probe_nab.py         one-off: is NAB's AU board ingestible (no — WAF)
 src/reqtrace/search.py      FTS5 / tsvector query layer + filters
 src/reqtrace/runs.py        reads board_runs back: freshness, coverage, failures
 src/reqtrace/web.py         stdlib server, three JSON endpoints
@@ -838,7 +839,7 @@ roughly zero.
 | bank | system | status |
 |---|---|---|
 | **Westpac** | Oracle Recruiting Cloud | **clean public REST API, 140 AU roles, 16 of them data** |
-| NAB | Eightfold | tenant confirmed **offshore-only** — 0 AU |
+| NAB | Clinch (PageUp) site; Eightfold offshore | AU board found — 79 roles, 3 of them data — reachable only at ~90s/page behind an AWS WAF |
 | Macquarie | Avature | HTML only, no JSON/RSS variant responds |
 | ANZ | SuccessFactors | not probed for a feed (its Workday tenant does not exist) |
 
@@ -863,10 +864,50 @@ Not yet solved: the per-job detail finder. Every `recruitingCEJobRequisitionDeta
 syntax tried returns 400, so an Oracle adapter would index title, location, date
 and department without a description body until that is cracked.
 
-**NAB is settled, and the answer is that its Eightfold board is not the one.**
-All 267 postings are Vietnam (183), India (92) and Japan (1); `careers.nab.com.au`
-points at exactly this tenant. So either NAB has no open Australian roles, which
-is implausible, or its AU hiring is served somewhere this crawl has not found.
+**NAB, revisited: the Australian board exists, and it is walled off.** The
+Eightfold tenant really is offshore-only — 267 postings, all Vietnam (183), India
+(92) and Japan (1) — but the claim that `careers.nab.com.au` points at that
+tenant was wrong. It serves a **Clinch** board (Clinch is PageUp's career-site
+product; the challenge page's own `awsWafCookieDomainList` names
+`clinchtalent.com` and `career-pages.com`), and it links to Eightfold only for
+"career opportunities in China, France, Hong-Kong, Japan, Singapore, UK, India,
+Vietnam and the US".
+
+`scripts/probe_nab.py` settles what can be taken from it, reading only what
+robots.txt declares (`Sitemap: /sitemap.xml`, `Crawl-delay: 5`, `Disallow:
+/api/`) under an honest `reqtrace/0.1` user agent:
+
+| check | result |
+|---|---|
+| sitemap | 79 job URLs, served 200 |
+| is that the whole board | yes — the site's own pagination is 3 pages x 30, and every URL it shows is in the sitemap |
+| job pages at the declared `Crawl-delay: 5` | **0 of 8 served** — HTTP 202 and an AWS WAF JS challenge (`gokuProps`) |
+| job pages at 90s spacing, after a five-minute cool-off | **3 of 3 served**, 200 and ~100 KB each |
+| data roles | 3 of the 77 title-bearing slugs: *AI Scientist*, *Senior AI Scientist*, *Principal AI Scientist*, Melbourne/Sydney (the other 2 URLs are opaque UUIDs) |
+
+The WAF is stricter than the site's own robots.txt: 5 seconds is what NAB asks
+for and 5 seconds is what gets challenged. Once tripped it stays tripped for
+minutes — the first `--slow-retest`, run straight after a challenged sweep,
+returned 202 three times; the same three URLs an hour later returned 200 three
+times. So the board is not sealed, it is *expensive*: at one request every 90
+seconds a full sweep of 79 pages is two hours of wall clock, against a daily
+`--vendor all` run that does 353 boards.
+
+The sitemap on its own carries a URL and a `lastmod` and nothing else — no title
+except a location-padded slug, no requisition id, no description. Identity would
+have to come from the job page, and it is there: one page fetched before the WAF
+closed carries both a JSON-LD `identifier.value` (`107817cf…`, the platform's own
+uid) and a visible requisition number (`798283`). The slug is not a substitute —
+it is title+location-derived, so a re-post with a different location set mints a
+new one, and *one record per role* would stop being true by construction.
+
+So NAB stays out on economics rather than on principle — the same
+reachability-is-not-relevance verdict SmartRecruiters and Eightfold already
+earned. Two hours of crawl a day, for a board whose entire data yield is three
+AI Scientist roles, is worse value than any adapter already written. What would
+change it: NAB publishing to a feed that wants to be read, or enough Clinch
+tenants turning up in the discovery crawl that one adapter amortises across
+several boards.
 
 ## Next
 
@@ -875,12 +916,17 @@ is implausible, or its AU hiring is served somewhere this crawl has not found.
    still waits on a Postgres — the runners are ephemeral and cannot see
    `data/jobs.db`. The remaining gap is that nothing *tells* you when a sweep
    degrades; you have to open the page.
-2. NAB / Macquarie / ANZ still unresolved for AU roles (Avature and
-   SuccessFactors respectively; neither exposes a JSON feed found so far)
-2. Deploy: the Actions workflow and the Postgres port are done and tested;
+2. NAB / Macquarie / ANZ: the *tokens* are now found — `nab/nab.com.au`
+   (Eightfold, and there is already an adapter for it), `mgl` (Avature),
+   `anzbanking` (SuccessFactors). NAB's token is the *offshore* Eightfold board
+   — 0 AU roles — so it stays unregistered; its 79 Australian roles sit on a
+   Clinch site behind an AWS WAF that only serves at ~90s per page, which the
+   section above prices out. Avature and SuccessFactors still expose no
+   JSON feed found so far, so those two need adapters, not discovery.
+3. Deploy: the Actions workflow and the Postgres port are done and tested;
    what is left is provisioning Neon and adding the `DATABASE_URL` secret,
    which needs your account. Until then the laptop is authoritative.
-3. Title → seniority/function via a local model, gated on `content_hash`
+4. Title → seniority/function via a local model, gated on `content_hash`
    (SmartRecruiters already supplies both, so this is Greenhouse/Ashby only)
 5. Search API over the tsvector index, then the thinnest possible UI
 6. `board_runs` logs per-run totals but not per-job churn; the `first_seen_at` /

@@ -13,6 +13,7 @@ data/jobs.db
 *.db-shm
 data/discovery/
 data/meta_sitemap_probe.json
+data/nab_sitemap_probe.json
 data/logs/
 site/
 .neon
