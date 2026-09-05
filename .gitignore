@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+*.egg-info/
+.pytest_cache/
+.DS_Store
+fixtures/raw/
+data/jobs.db
+*.db
+data/discovery/
+data/meta_sitemap_probe.json

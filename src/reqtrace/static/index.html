@@ -1,0 +1,191 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReqTrace</title>
+<style>
+  :root {
+    --bg:#fbfbfa; --panel:#fff; --ink:#1a1a19; --muted:#6b6b66; --line:#e5e4e0;
+    --accent:#2f6f4f; --accent-soft:#e8f1ec; --chip:#f2f1ee; --warn:#8a5a20;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#161614; --panel:#1e1e1c; --ink:#eceae5; --muted:#9a978f; --line:#33322e;
+      --accent:#7fc4a0; --accent-soft:#1f2f27; --chip:#272621; --warn:#d9a441;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { padding:22px 20px 14px; border-bottom:1px solid var(--line); background:var(--panel); }
+  .wrap { max-width:1000px; margin:0 auto; }
+  h1 { margin:0 0 4px; font-size:19px; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:13px; }
+  .searchrow { display:flex; gap:8px; margin-top:14px; }
+  input[type=search] { flex:1; padding:10px 12px; font-size:15px; color:var(--ink);
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; }
+  input[type=search]:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  select, button { font:inherit; color:var(--ink); background:var(--panel);
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer; }
+  .filters { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; align-items:center; }
+  .chip { padding:5px 10px; border-radius:999px; background:var(--chip);
+    border:1px solid transparent; font-size:13px; cursor:pointer; user-select:none; }
+  .chip[aria-pressed=true] { background:var(--accent-soft); border-color:var(--accent);
+    color:var(--accent); font-weight:600; }
+  main { max-width:1000px; margin:0 auto; padding:16px 20px 60px; }
+  .count { color:var(--muted); font-size:13px; margin:6px 0 12px; }
+  .job { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:14px 16px; margin-bottom:10px; }
+  .job h2 { margin:0 0 3px; font-size:16px; font-weight:600; letter-spacing:-.01em; }
+  .job h2 a { color:inherit; text-decoration:none; }
+  .job h2 a:hover { color:var(--accent); text-decoration:underline; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    color:var(--muted); font-size:13px; }
+  .co { color:var(--ink); font-weight:500; }
+  .badge { font-size:11px; padding:2px 7px; border-radius:5px; background:var(--chip);
+    text-transform:uppercase; letter-spacing:.04em; }
+  .badge.remote { background:var(--accent-soft); color:var(--accent); }
+  .badge.salary { background:var(--accent-soft); color:var(--accent); font-weight:600;
+    text-transform:none; letter-spacing:0; }
+  .badge.fresh { background:var(--accent-soft); color:var(--accent); }
+  .snip { margin-top:7px; color:var(--muted); font-size:13px;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .empty { padding:40px 0; text-align:center; color:var(--muted); }
+  .more { display:block; width:100%; margin-top:10px; padding:10px; }
+  footer { color:var(--muted); font-size:12px; text-align:center; padding:0 20px 30px; }
+</style>
+
+<header><div class="wrap">
+  <h1>ReqTrace</h1>
+  <div class="sub" id="stats">loading index…</div>
+  <div class="searchrow">
+    <input type="search" id="q" placeholder="data scientist, causal inference, forecasting…" autofocus>
+    <select id="sort">
+      <option value="newest">Newest</option>
+      <option value="relevance">Relevance</option>
+      <option value="salary">Salary</option>
+    </select>
+  </div>
+  <div class="filters">
+    <span class="chip" id="f-data" aria-pressed="true">Data roles</span>
+    <span class="chip" id="f-salary" aria-pressed="false">Has salary</span>
+    <span class="chip" id="f-remote" aria-pressed="false">Remote only</span>
+    <span class="chip" id="f-fresh" aria-pressed="false">New this week</span>
+    <select id="city"><option value="">All cities</option></select>
+    <select id="company"><option value="">All employers</option></select>
+    <select id="vendor"><option value="">All sources</option></select>
+  </div>
+</div></header>
+
+<main>
+  <div class="count" id="count"></div>
+  <div id="results"></div>
+  <button class="more" id="more" hidden>Load more</button>
+</main>
+<footer>Pulled straight from employers' ATS feeds — one record per requisition,
+apply links go to the employer. Roles that close disappear on the next run.</footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const state = { offset: 0, total: 0 };
+
+function params(offset = 0) {
+  const p = new URLSearchParams();
+  if ($('#q').value.trim()) p.set('q', $('#q').value.trim());
+  if ($('#f-data').ariaPressed === 'true') p.set('data_only', '1');
+  if ($('#f-salary').ariaPressed === 'true') p.set('has_salary', '1');
+  if ($('#f-remote').ariaPressed === 'true') p.set('remote', 'remote');
+  if ($('#f-fresh').ariaPressed === 'true') p.set('days', '7');
+  for (const id of ['city', 'company', 'vendor']) if ($('#' + id).value) p.set(id, $('#' + id).value);
+  p.set('sort', $('#sort').value);
+  p.set('offset', offset);
+  return p;
+}
+
+// Prefer the employer's own publish date; first_seen_at only records when this
+// index noticed the role, which would read "today" for every row on a fresh DB.
+const daysAgo = j => {
+  const iso = j.posted_at || j.first_seen_at;
+  if (!iso) return null;
+  const d = Math.floor((Date.now() - new Date(iso.replace(' ', 'T'))) / 864e5);
+  return Number.isFinite(d) ? Math.max(d, 0) : null;
+};
+
+const ago = d => d === null ? '' : (d === 0 ? 'today' : d === 1 ? 'yesterday'
+  : d < 30 ? d + 'd ago' : d < 365 ? Math.round(d / 30) + 'mo ago' : 'over a year ago');
+
+const money = j => {
+  if (!j.salary_min) return null;
+  const f = n => (n >= 1000 ? Math.round(n / 1000) + 'k' : n);
+  const cur = (j.salary_currency || '').replace('AUD', 'A$').replace('USD', 'US$');
+  const range = j.salary_max && j.salary_max !== j.salary_min
+    ? `${f(j.salary_min)}–${f(j.salary_max)}` : f(j.salary_min);
+  return `${cur}${range}${j.salary_period ? '/' + j.salary_period : ''}`;
+};
+
+const esc = s => (s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+function card(j) {
+  const d = daysAgo(j);
+  const where = [j.location_city, j.location_country].filter(Boolean).join(', ') || j.location_raw || '—';
+  const sal = money(j);
+  return `<article class="job">
+    <h2><a href="${esc(j.apply_url)}" target="_blank" rel="noopener">${esc(j.title)}</a></h2>
+    <div class="meta">
+      <span class="co">${esc(j.company)}</span><span>·</span><span>${esc(where)}</span>
+      ${j.remote_type && j.remote_type !== 'unknown' ? `<span class="badge ${j.remote_type === 'remote' ? 'remote' : ''}">${j.remote_type}</span>` : ''}
+      ${sal ? `<span class="badge salary">${esc(sal)}</span>` : ''}
+      ${d !== null && d <= 7 ? `<span class="badge fresh">${ago(d)}</span>`
+        : (d !== null ? `<span>${ago(d)}</span>` : '')}
+      ${j.seniority && j.seniority !== 'Not Applicable' ? `<span>${esc(j.seniority)}</span>` : ''}
+    </div>
+    ${j.snippet ? `<div class="snip">${esc(j.snippet)}</div>` : ''}
+  </article>`;
+}
+
+let timer;
+async function load(more = false) {
+  state.offset = more ? state.offset + 50 : 0;
+  const r = await fetch('/api/search?' + params(state.offset));
+  const d = await r.json();
+  state.total = d.total;
+  $('#count').textContent = `${d.total.toLocaleString()} matching role${d.total === 1 ? '' : 's'}`;
+  const html = d.results.map(card).join('');
+  $('#results').innerHTML = more ? $('#results').innerHTML + html : (html ||
+    '<div class="empty">Nothing matches. Try dropping a filter.</div>');
+  $('#more').hidden = state.offset + d.results.length >= d.total;
+  if (!more) fillFacets(d.facets);
+}
+
+let facetsDone = false;
+function fillFacets(f) {
+  if (facetsDone || !f) return;
+  facetsDone = true;
+  const fill = (sel, items, label) => {
+    const el = $(sel);
+    for (const it of items) {
+      if (!it.key) continue;
+      const o = document.createElement('option');
+      o.value = it.key; o.textContent = `${it.key} (${it.n})`;
+      el.append(o);
+    }
+  };
+  fill('#city', f.cities); fill('#company', f.companies); fill('#vendor', f.vendors);
+}
+
+for (const id of ['#f-data', '#f-salary', '#f-remote', '#f-fresh']) {
+  $(id).onclick = e => {
+    e.target.ariaPressed = e.target.ariaPressed === 'true' ? 'false' : 'true';
+    load();
+  };
+}
+for (const id of ['#city', '#company', '#vendor', '#sort']) $(id).onchange = () => load();
+$('#q').oninput = () => { clearTimeout(timer); timer = setTimeout(load, 220); };
+$('#more').onclick = () => load(true);
+
+fetch('/api/stats').then(r => r.json()).then(s => {
+  $('#stats').textContent =
+    `${s.au_open.toLocaleString()} open Australian roles · ${s.boards} employer boards · ` +
+    `${s.vendors} ATS sources · ${s.closed.toLocaleString()} closed and retired`;
+});
+load();
+</script>

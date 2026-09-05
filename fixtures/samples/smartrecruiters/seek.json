@@ -1,0 +1,330 @@
+{
+ "totalFound": 44,
+ "content": [
+  {
+   "id": "744000147467629",
+   "name": "Associate Business Analyst",
+   "uuid": "8dd8f799-4fc7-415e-9700-9df59d8ac53b",
+   "jobAdId": "33d0cc70-d41f-4d50-adf8-a36cda2f9bdc",
+   "defaultJobAd": true,
+   "refNumber": "REF7491C",
+   "company": {
+    "identifier": "SEEK",
+    "name": "SEEK"
+   },
+   "releasedDate": "2026-09-04T09:40:15.882Z",
+   "location": {
+    "city": "Uptown Bonifacio, Taguig City",
+    "region": "NATIONAL CAPITAL REGION (MANILA)",
+    "country": "ph",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Uptown Bonifacio, Taguig City, NATIONAL CAPITAL REGION (MANILA), Philippines"
+   },
+   "industry": {
+    "id": "internet",
+    "label": "Internet"
+   },
+   "department": {},
+   "function": {
+    "id": "other",
+    "label": "Other"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "not_applicable",
+    "label": "Not Applicable"
+   },
+   "customField": [
+    {
+     "fieldId": "5f027f7abf992476d781be51",
+     "fieldLabel": "Role Type",
+     "valueId": "439a5676-7737-4263-af55-52ebbaaabaf7",
+     "valueLabel": "Employee"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "ph",
+     "valueLabel": "Philippines"
+    },
+    {
+     "fieldId": "5e6ad182ce19930139e373e3",
+     "fieldLabel": "Brands",
+     "valueId": "0b4846ec-1d1e-4012-a7a8-09d79f7899d8",
+     "valueLabel": "Jobstreet by SEEK"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/seek/postings/744000147467629",
+   "language": {
+    "code": "en-GB",
+    "label": "English (UK)",
+    "labelNative": "English (UK)"
+   }
+  },
+  {
+   "id": "744000147464701",
+   "name": "Real Time Analyst",
+   "uuid": "291af9f8-7ab8-4aba-b5f2-d6195c0a61e9",
+   "jobAdId": "873d7162-8a44-4b4c-afbc-c5535d23ef26",
+   "defaultJobAd": true,
+   "refNumber": "REF7492L",
+   "company": {
+    "identifier": "SEEK",
+    "name": "SEEK"
+   },
+   "releasedDate": "2026-09-04T09:39:14.066Z",
+   "location": {
+    "city": "Uptown Bonifacio, Taguig City",
+    "region": "NATIONAL CAPITAL REGION (MANILA)",
+    "country": "ph",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Uptown Bonifacio, Taguig City, NATIONAL CAPITAL REGION (MANILA), Philippines"
+   },
+   "industry": {
+    "id": "internet",
+    "label": "Internet"
+   },
+   "department": {},
+   "function": {
+    "id": "other",
+    "label": "Other"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "not_applicable",
+    "label": "Not Applicable"
+   },
+   "customField": [
+    {
+     "fieldId": "5f027f7abf992476d781be51",
+     "fieldLabel": "Role Type",
+     "valueId": "439a5676-7737-4263-af55-52ebbaaabaf7",
+     "valueLabel": "Employee"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "ph",
+     "valueLabel": "Philippines"
+    },
+    {
+     "fieldId": "5e6ad182ce19930139e373e3",
+     "fieldLabel": "Brands",
+     "valueId": "0b4846ec-1d1e-4012-a7a8-09d79f7899d8",
+     "valueLabel": "Jobstreet by SEEK"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/seek/postings/744000147464701",
+   "language": {
+    "code": "en-GB",
+    "label": "English (UK)",
+    "labelNative": "English (UK)"
+   }
+  },
+  {
+   "id": "744000147433050",
+   "name": "Account Manager (Acquisition - Inside Sales)",
+   "uuid": "9a058082-481a-4544-a5e5-351bcb6ac6d9",
+   "jobAdId": "0058993e-b6a4-4a0e-83b3-e5a70c718496",
+   "defaultJobAd": true,
+   "refNumber": "REF7484V",
+   "company": {
+    "identifier": "SEEK",
+    "name": "SEEK"
+   },
+   "releasedDate": "2026-09-04T07:30:46.501Z",
+   "location": {
+    "city": "Quarry Bay",
+    "region": "HONG KONG ISLAND",
+    "country": "hk",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Quarry Bay, HONG KONG ISLAND, Hong Kong"
+   },
+   "industry": {
+    "id": "internet",
+    "label": "Internet"
+   },
+   "department": {},
+   "function": {
+    "id": "other",
+    "label": "Other"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "not_applicable",
+    "label": "Not Applicable"
+   },
+   "customField": [
+    {
+     "fieldId": "5f027f7abf992476d781be51",
+     "fieldLabel": "Role Type",
+     "valueId": "439a5676-7737-4263-af55-52ebbaaabaf7",
+     "valueLabel": "Employee"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "hk",
+     "valueLabel": "Hong Kong"
+    },
+    {
+     "fieldId": "5e6ad182ce19930139e373e3",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "SEEK"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/seek/postings/744000147433050",
+   "language": {
+    "code": "en-GB",
+    "label": "English (UK)",
+    "labelNative": "English (UK)"
+   }
+  },
+  {
+   "id": "744000147421909",
+   "name": "Employee Relations Partner - Asia ",
+   "uuid": "0c2d5cf3-f13f-406a-91bf-ae40c635ef0d",
+   "jobAdId": "de99d861-1e9c-48db-b82d-62020d9400e3",
+   "defaultJobAd": false,
+   "refNumber": "REF7184N",
+   "company": {
+    "identifier": "SEEK",
+    "name": "SEEK"
+   },
+   "releasedDate": "2026-09-04T06:21:01.202Z",
+   "location": {
+    "city": "Kuala Lumpur",
+    "region": "Wilayah Persekutuan Kuala Lumpur",
+    "country": "my",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia"
+   },
+   "industry": {
+    "id": "internet",
+    "label": "Internet"
+   },
+   "department": {},
+   "function": {
+    "id": "other",
+    "label": "Other"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "5f027f7abf992476d781be51",
+     "fieldLabel": "Role Type",
+     "valueId": "439a5676-7737-4263-af55-52ebbaaabaf7",
+     "valueLabel": "Employee"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "my",
+     "valueLabel": "Malaysia"
+    },
+    {
+     "fieldId": "5e6ad182ce19930139e373e3",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "SEEK"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/seek/postings/744000147421909",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "744000146889819",
+   "name": "Project Assistant",
+   "uuid": "bff57165-3177-40a1-8651-344a544de21b",
+   "jobAdId": "3ecd1ecd-76c8-47a2-b770-716126f5c07d",
+   "defaultJobAd": true,
+   "refNumber": "REF7473D",
+   "company": {
+    "identifier": "SEEK",
+    "name": "SEEK"
+   },
+   "releasedDate": "2026-09-02T04:58:17.378Z",
+   "location": {
+    "city": "Bangkok",
+    "region": "Bangkok",
+    "country": "th",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Bangkok, Bangkok, Thailand"
+   },
+   "industry": {
+    "id": "internet",
+    "label": "Internet"
+   },
+   "department": {},
+   "function": {
+    "id": "other",
+    "label": "Other"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "not_applicable",
+    "label": "Not Applicable"
+   },
+   "customField": [
+    {
+     "fieldId": "5f027f7abf992476d781be51",
+     "fieldLabel": "Role Type",
+     "valueId": "439a5676-7737-4263-af55-52ebbaaabaf7",
+     "valueLabel": "Employee"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "th",
+     "valueLabel": "Thailand"
+    },
+    {
+     "fieldId": "5e6ad182ce19930139e373e3",
+     "fieldLabel": "Brands",
+     "valueId": "d5db0c8a-5105-4131-8228-921f7b8c4db9",
+     "valueLabel": "Jobsdb by SEEK"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/seek/postings/744000146889819",
+   "language": {
+    "code": "en-GB",
+    "label": "English (UK)",
+    "labelNative": "English (UK)"
+   }
+  }
+ ]
+}

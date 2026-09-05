@@ -1,0 +1,51 @@
+name,domain,careers_url,hints,segment
+X,x.com,https://careers.x.com/en,x|twitter|xcorp,tech
+Apple,apple.com,https://www.apple.com/careers/au/,apple,tech
+Palantir,palantir.com,https://www.palantir.com/careers/,palantir|palantirtechnologies,tech
+Meta,meta.com,https://www.metacareers.com/jobs,meta|facebook|metacareers,tech
+NVIDIA,nvidia.com,https://www.nvidia.com/en-au/about-nvidia/careers/,nvidia,tech
+TSMC,tsmc.com,https://www.tsmc.com/english/careers,tsmc,semiconductor
+LVMH,lvmh.com,https://www.lvmh.com/join-us/,lvmh,luxury
+McDonalds,mcdonalds.com,https://careers.mcdonalds.com/,mcdonalds|McDonaldsCorporation,food
+Google,google.com,https://www.google.com/about/careers/applications/,google|googlecareers,tech
+Amazon,amazon.com,https://www.amazon.jobs/en/,amazon|amazonjobs,tech
+Microsoft,microsoft.com,https://careers.microsoft.com/,microsoft,tech
+IBM,ibm.com,https://www.ibm.com/careers,ibm,tech
+Salesforce,salesforce.com,https://careers.salesforce.com/,salesforce,tech
+SAP,sap.com,https://jobs.sap.com/,sap,tech
+Adobe,adobe.com,https://careers.adobe.com/,adobe,tech
+Intel,intel.com,https://jobs.intel.com/,intel,semiconductor
+AMD,amd.com,https://careers.amd.com/,amd,semiconductor
+Qualcomm,qualcomm.com,https://careers.qualcomm.com/,qualcomm,semiconductor
+Uber,uber.com,https://www.uber.com/us/en/careers/,uber|ubercareers,tech
+Netflix,netflix.com,https://explore.jobs.netflix.net/careers,netflix,tech
+Spotify,spotify.com,https://www.lifeatspotify.com/jobs,spotify|spotifyjobs,tech
+Tesla,tesla.com,https://www.tesla.com/careers,tesla,auto
+Visa,visa.com,https://corporate.visa.com/en/jobs.html,visa|visainc,fintech
+Mastercard,mastercard.com,https://careers.mastercard.com/,mastercard,fintech
+PayPal,paypal.com,https://careers.pypl.com/,paypal|paypalinc,fintech
+Goldman Sachs,goldmansachs.com,https://www.goldmansachs.com/careers,goldmansachs|goldman,bank
+JPMorgan Chase,jpmorganchase.com,https://careers.jpmorgan.com/,jpmorgan|jpmorganchase,bank
+BlackRock,blackrock.com,https://careers.blackrock.com/,blackrock,finance
+HSBC,hsbc.com,https://www.hsbc.com/careers,hsbc,bank
+Citi,citigroup.com,https://jobs.citi.com/,citi|citigroup,bank
+Nike,nike.com,https://careers.nike.com/,nike,retail
+Unilever,unilever.com,https://careers.unilever.com/,unilever,fmcg
+Nestle,nestle.com,https://www.nestle.com/jobs,nestle,fmcg
+PepsiCo,pepsico.com,https://www.pepsicojobs.com/,pepsico|pepsi,fmcg
+Coca-Cola,coca-colacompany.com,https://www.coca-colacompany.com/careers,cocacola|coca-cola,fmcg
+Procter & Gamble,pg.com,https://www.pgcareers.com/,procterandgamble|pg,fmcg
+Pfizer,pfizer.com,https://www.pfizer.com/about/careers,pfizer,pharma
+AstraZeneca,astrazeneca.com,https://careers.astrazeneca.com/,astrazeneca,pharma
+Johnson & Johnson,jnj.com,https://www.careers.jnj.com/,johnsonandjohnson|jnj,pharma
+Roche,roche.com,https://careers.roche.com/,roche,pharma
+Novartis,novartis.com,https://www.novartis.com/careers,novartis,pharma
+Siemens,siemens.com,https://jobs.siemens.com/,siemens,industrial
+Shell,shell.com,https://www.shell.com/careers,shell,energy
+Rio Tinto,riotinto.com,https://careers.riotinto.com/,riotinto,mining
+BHP,bhp.com,https://www.bhp.com/careers,bhp,mining
+Woodside Energy,woodside.com,https://www.woodside.com/careers,woodside|woodsideenergy,energy
+IKEA,ikea.com,https://www.ikea.com/au/en/this-is-ikea/work-with-us/,ikea,retail
+H&M,hm.com,https://career.hm.com/,hm|handm,retail
+Estee Lauder,elcompanies.com,https://www.elcompanies.com/en/careers,esteelauder|elcompanies,luxury
+Amazon Web Services,aws.amazon.com,https://aws.amazon.com/careers/,aws|amazonwebservices,tech

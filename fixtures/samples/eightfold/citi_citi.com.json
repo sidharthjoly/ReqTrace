@@ -1,0 +1,114 @@
+{
+ "data": {
+  "count": 5,
+  "positions": [
+   {
+    "id": 859036724717,
+    "displayJobId": "26980160",
+    "name": "Corporate Banking Associate (Assistant Vice President)",
+    "locations": [
+     "Sydney, New South Wales, Australia",
+     "MELBOURNE, Victoria, Australia"
+    ],
+    "standardizedLocations": [
+     "Sydney, NSW, AU",
+     "Melbourne, VIC, AU"
+    ],
+    "postedTs": 1785110400,
+    "solrScore": null,
+    "stars": 0,
+    "department": "Institutional Banking",
+    "creationTs": 1784505600,
+    "isHot": 0,
+    "workLocationOption": "hybrid",
+    "locationFlexibility": null,
+    "atsJobId": "26980160",
+    "positionUrl": "/careers/job/859036724717"
+   },
+   {
+    "id": 859037315605,
+    "displayJobId": "26987764",
+    "name": "Asia Regional Commercial Cards Sales Manager, Services \u2013 Vice President - SYDNEY",
+    "locations": [
+     "Sydney, New South Wales, Australia"
+    ],
+    "standardizedLocations": [
+     "Sydney, NSW, AU"
+    ],
+    "postedTs": 1787011200,
+    "solrScore": null,
+    "stars": 0,
+    "department": "Institutional Sales",
+    "creationTs": 1786924800,
+    "isHot": 0,
+    "workLocationOption": "hybrid",
+    "locationFlexibility": null,
+    "atsJobId": "26987764",
+    "positionUrl": "/careers/job/859037315605"
+   },
+   {
+    "id": 859037415790,
+    "displayJobId": "26987804",
+    "name": "Product Manager, Platforms and Data Services \u2013 Vice President \u2013 SYDNEY",
+    "locations": [
+     "Sydney, New South Wales, Australia"
+    ],
+    "standardizedLocations": [
+     "Sydney, NSW, AU"
+    ],
+    "postedTs": 1787270400,
+    "solrScore": null,
+    "stars": 0,
+    "department": "Product Management and Development",
+    "creationTs": 1786924800,
+    "isHot": 0,
+    "workLocationOption": "hybrid",
+    "locationFlexibility": null,
+    "atsJobId": "26987804",
+    "positionUrl": "/careers/job/859037415790"
+   },
+   {
+    "id": 859037778225,
+    "displayJobId": "26991598",
+    "name": "Sales Trader \u2013 VP (5 month fixed-term)",
+    "locations": [
+     "Sydney, New South Wales, Australia"
+    ],
+    "standardizedLocations": [
+     "Sydney, NSW, AU"
+    ],
+    "postedTs": 1788307200,
+    "solrScore": null,
+    "stars": 0,
+    "department": "Institutional Sales",
+    "creationTs": 1788220800,
+    "isHot": 0,
+    "workLocationOption": "onsite",
+    "locationFlexibility": null,
+    "atsJobId": "26991598",
+    "positionUrl": "/careers/job/859037778225"
+   },
+   {
+    "id": 859037378368,
+    "displayJobId": "26988097",
+    "name": "Head of OTC Derivatives & FX Operations",
+    "locations": [
+     "Sydney, New South Wales, Australia"
+    ],
+    "standardizedLocations": [
+     "Sydney, NSW, AU"
+    ],
+    "postedTs": 1787184000,
+    "solrScore": null,
+    "stars": 0,
+    "department": "Operations - Transaction Services",
+    "creationTs": 1787011200,
+    "isHot": 0,
+    "workLocationOption": "hybrid",
+    "locationFlexibility": null,
+    "atsJobId": "26988097",
+    "positionUrl": "/careers/job/859037378368"
+   }
+  ]
+ }
+}

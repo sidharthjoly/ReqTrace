@@ -1,0 +1,51 @@
+company,domain,segment,ats_vendor,board_token,careers_url,job_count,verified_via,notes,other_hits
+Adobe,adobe.com,tech,phenom,cdn,https://careers.adobe.com/,,careers-page-html,found in careers page markup,phenom:cdn; phenom:pp-cdn; phenom:content-us; phenom:cdn-prod-static
+AMD,amd.com,semiconductor,icims,internal-amd,https://careers.amd.com/,,careers-page-html,found in careers page markup,icims:internal-amd; icims:careers-amd
+AstraZeneca,astrazeneca.com,pharma,eightfold,astrazeneca/astrazeneca.com,https://careers.astrazeneca.com/,,endpoint-200,AU-scoped board,eightfold:astrazeneca
+BHP,bhp.com,mining,successfactors,performancemanager8,https://www.bhp.com/careers,,careers-page-html,found via careers-page-html,successfactors:performancemanager8; successfactors:rmkcdn; successfactors:career8
+Citi,citigroup.com,bank,eightfold,citi/citi.com,https://jobs.citi.com/,,endpoint-200,AU-scoped board,eightfold:citi; workday:citi
+Coca-Cola,coca-colacompany.com,fmcg,workday,coke.wd1/coca-cola-careers,https://www.coca-colacompany.com/careers,,endpoint-200,216 open roles (site path found by probing; careers markup gave a locale),workday:coke
+Estee Lauder,elcompanies.com,luxury,eightfold,,https://www.elcompanies.com/en/careers,,careers-page-html,found via careers-page-html | tenant not confirmed,eightfold:vs-errors; eightfold:app; eightfold:elcompanies
+Goldman Sachs,goldmansachs.com,bank,avature,recruiting360,https://www.goldmansachs.com/careers,,careers-deep-crawl,found via careers-deep-crawl,avature:recruiting360
+IKEA,ikea.com,retail,avature,ikea,https://www.ikea.com/au/en/this-is-ikea/work-with-us/,,careers-deep-crawl,found via careers-deep-crawl,avature:ikea
+Johnson & Johnson,jnj.com,pharma,workday,jj.wd5/JJ,https://www.careers.jnj.com/,,careers-page-html,jj.wd5|site=JJ,workday:jj
+LVMH,lvmh.com,luxury,smartrecruiters,lvmh,https://www.lvmh.com/join-us/,4,endpoint-200,4 open roles,
+Mastercard,mastercard.com,fintech,phenom,cdn,https://careers.mastercard.com/,,careers-page-html,found in careers page markup,phenom:cdn; phenom:pp-cdn; phenom:content-us; phenom:cdn-prod-static; phenom:cdn-bot; workday:mastercard
+McDonalds,mcdonalds.com,food,smartrecruiters,McDonaldsCorporation,https://careers.mcdonalds.com/,4,endpoint-200,4 open roles,
+Netflix,netflix.com,tech,eightfold,,https://explore.jobs.netflix.net/careers,,careers-page-html,found in careers page markup | tenant not confirmed,eightfold:netflix
+Nike,nike.com,retail,avature,nikeats,https://careers.nike.com/,,careers-page-html,found in careers page markup,avature:nikeats; workday:nike
+Novartis,novartis.com,pharma,workday,novartis.wd3/Internal_Careers_for_Acquired_Entities,https://www.novartis.com/careers,,careers-deep-crawl,novartis.wd3|site=Internal_Careers_for_Acquired_Entities,workday:novartis
+NVIDIA,nvidia.com,tech,eightfold,,https://www.nvidia.com/en-au/about-nvidia/careers/,,careers-page-html,NOT REGISTERED: already indexed via Workday with the same 10 AU roles; registering both would duplicate every requisition,eightfold:nvidia
+Palantir,palantir.com,tech,lever,palantir,https://www.palantir.com/careers/,310,endpoint-200,310 open roles,
+PayPal,paypal.com,fintech,eightfold,paypal/paypal.com,https://careers.pypl.com/,,endpoint-200,AU-scoped board,eightfold:paypal
+PepsiCo,pepsico.com,fmcg,avature,sandboxpepsi,https://www.pepsicojobs.com/,,careers-page-html,found in careers page markup,avature:sandboxpepsi; icims:pepjobs-pepsico; icims:uscareers-pepsico; icims:pepsico
+Pfizer,pfizer.com,pharma,workday,pfizer.wd1/PfizerCareers,https://www.pfizer.com/about/careers,,careers-page-html,pfizer.wd1|site=PfizerCareers,workday:pfizer
+Procter & Gamble,pg.com,fmcg,phenom,cdn,https://www.pgcareers.com/,,careers-page-html,found in careers page markup,phenom:cdn; phenom:pp-cdn; phenom:content-ir; phenom:cdn-prod-static; phenom:cdn-bot
+Qualcomm,qualcomm.com,semiconductor,eightfold,qualcomm/qualcomm.com,https://careers.qualcomm.com/,,endpoint-200,AU-scoped board,eightfold:app; eightfold:qualcomm
+Roche,roche.com,pharma,phenom,cdn,https://careers.roche.com/,,careers-page-html,found in careers page markup,phenom:cdn; phenom:pp-cdn; phenom:content-ir; phenom:cdn-prod-static
+SAP,sap.com,tech,successfactors,rmkcdn,https://jobs.sap.com/,,careers-page-html,found in careers page markup,successfactors:rmkcdn
+Shell,shell.com,energy,workday,shell.wd3/ShellCareers,https://www.shell.com/careers,,careers-deep-crawl,shell.wd3|site=ShellCareers,workday:shell
+Siemens,siemens.com,industrial,avature,avature,https://jobs.siemens.com/,,careers-page-html,found in careers page markup,avature:avature
+Spotify,spotify.com,tech,lever,spotify,https://www.lifeatspotify.com/jobs,78,endpoint-200,78 open roles,
+TSMC,tsmc.com,semiconductor,avature,avature,https://www.tsmc.com/english/careers,,careers-page-html,found via careers-page-html,avature:avature
+Uber,uber.com,tech,smartrecruiters,uber,https://www.uber.com/us/en/careers/,1,endpoint-200,1 open roles,
+Unilever,unilever.com,fmcg,workday,unilever.wd3/Unilever_Experienced_Professionals,https://careers.unilever.com/,,careers-page-html,unilever.wd3|site=Unilever_Experienced_Professionals,workday:unilever
+Visa,visa.com,fintech,workday,visa.wd5/Visa,https://corporate.visa.com/en/jobs.html,,careers-page-html,visa.wd5|site=Visa,workday:visa
+Woodside Energy,woodside.com,energy,successfactors,performancemanager10,https://www.woodside.com/careers,,careers-deep-crawl,found via careers-deep-crawl,successfactors:performancemanager10; successfactors:rmkcdn; successfactors:career10
+X,x.com,tech,smartrecruiters,x,https://careers.x.com/en,2,endpoint-200,2 open roles,
+Amazon,amazon.com,tech,,,https://www.amazon.jobs/en/,,,amazon.com HTTP 202,
+Amazon Web Services,aws.amazon.com,tech,,,https://aws.amazon.com/careers/,,,no ATS fingerprint after 1-hop crawl,
+Apple,apple.com,tech,,,https://www.apple.com/careers/au/,,,no ATS fingerprint after 1-hop crawl,
+BlackRock,blackrock.com,finance,,,https://careers.blackrock.com/,,,no ATS fingerprint after 1-hop crawl,
+Google,google.com,tech,,,https://www.google.com/about/careers/applications/,,,no ATS fingerprint after 1-hop crawl,
+H&M,hm.com,retail,,,https://career.hm.com/,,,hm.com HTTP 403,
+HSBC,hsbc.com,bank,,,https://www.hsbc.com/careers,,,no ATS fingerprint after 1-hop crawl,
+IBM,ibm.com,tech,,,https://www.ibm.com/careers,,,no ATS fingerprint after 1-hop crawl,
+Intel,intel.com,semiconductor,,,https://jobs.intel.com/,,,intel.com HTTP 403,
+JPMorgan Chase,jpmorganchase.com,bank,,,https://careers.jpmorgan.com/,,,no ATS fingerprint after 1-hop crawl,
+Meta,meta.com,tech,,,https://www.metacareers.com/jobs,,,no ATS fingerprint after 1-hop crawl,
+Microsoft,microsoft.com,tech,,,https://careers.microsoft.com/,,,no ATS fingerprint after 1-hop crawl,
+Nestle,nestle.com,fmcg,,,https://www.nestle.com/jobs,,,nestle.com HTTP 403,
+Rio Tinto,riotinto.com,mining,,,https://careers.riotinto.com/,,,no ATS fingerprint after 1-hop crawl,
+Salesforce,salesforce.com,tech,,,https://careers.salesforce.com/,,,no ATS fingerprint after 1-hop crawl,
+Tesla,tesla.com,auto,,,https://www.tesla.com/careers,,,tesla.com HTTP 403,

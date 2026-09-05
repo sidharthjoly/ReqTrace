@@ -1,0 +1,64 @@
+name,domain,careers_url,hints,segment
+Canva,canva.com,https://www.lifeatcanva.com/en/jobs/,canva,tech
+Atlassian,atlassian.com,https://www.atlassian.com/company/careers/all-jobs,atlassian,tech
+Airwallex,airwallex.com,https://www.airwallex.com/careers,airwallex,tech
+SafetyCulture,safetyculture.com,https://safetyculture.com/careers/,safetyculture,tech
+Culture Amp,cultureamp.com,https://www.cultureamp.com/company/careers,cultureamp,tech
+Employment Hero,employmenthero.com,https://employmenthero.com/careers/,employmenthero,tech
+Deputy,deputy.com,https://www.deputy.com/careers,deputy|deputec,tech
+Go1,go1.com,https://www.go1.com/careers,go1|go1com,tech
+Immutable,immutable.com,https://www.immutable.com/careers,immutable,tech
+Zeller,myzeller.com,https://www.myzeller.com/careers,zeller|myzeller,tech
+Airtasker,airtasker.com,https://www.airtasker.com/careers/,airtasker,tech
+Rokt,rokt.com,https://www.rokt.com/careers/,rokt,tech
+Linktree,linktr.ee,https://linktr.ee/s/about/careers/,linktree,tech
+Octopus Deploy,octopus.com,https://octopus.com/company/careers,octopusdeploy|octopus,tech
+Eucalyptus,eucalyptus.vc,https://eucalyptus.vc/careers,eucalyptus|eucalyptusvc,tech
+Harrison.ai,harrison.ai,https://harrison.ai/careers/,harrisonai|harrison,tech
+Q-CTRL,q-ctrl.com,https://q-ctrl.com/careers,qctrl|q-ctrl,tech
+Relevance AI,relevanceai.com,https://relevanceai.com/careers,relevanceai,tech
+Lorikeet,lorikeetcx.ai,https://www.lorikeetcx.ai/careers,lorikeet|lorikeetcx,tech
+Pet Circle,petcircle.com.au,https://www.petcircle.com.au/careers,petcircle,tech
+Kogan,kogan.com,https://www.kogan.com/au/careers/,kogan|kogancom,tech
+Marketplacer,marketplacer.com,https://marketplacer.com/careers/,marketplacer,tech
+Prospa,prospa.com,https://www.prospa.com/careers,prospa,fintech
+Zip Co,zip.co,https://zip.co/au/careers,zipco|zip,fintech
+Tyro,tyro.com,https://www.tyro.com/careers/,tyro|tyropayments,fintech
+Judo Bank,judo.bank,https://www.judo.bank/careers,judobank|judo,fintech
+Athena Home Loans,athena.com.au,https://www.athena.com.au/careers,athena|athenahomeloans,fintech
+Up Bank,up.com.au,https://up.com.au/careers/,upbank|up,fintech
+Block (Afterpay),block.xyz,https://block.xyz/careers,block|square|afterpay,fintech
+Commonwealth Bank,commbank.com.au,https://www.commbank.com.au/careers.html,commbank|commonwealthbank|cba,bank
+National Australia Bank,nab.com.au,https://careers.nab.com.au/,nab|nationalaustraliabank,bank
+ANZ,anz.com,https://www.anz.com/careers/,anz|anzbank,bank
+Westpac,westpac.com.au,https://www.westpac.com.au/about-westpac/careers/,westpac|westpacgroup,bank
+Macquarie Group,macquarie.com,https://www.macquarie.com/au/en/careers.html,macquarie|macquariegroup,bank
+Suncorp,suncorp.com.au,https://www.suncorpgroup.com.au/careers.html,suncorp|suncorpgroup,insurance
+IAG,iag.com.au,https://www.iag.com.au/careers,iag|insuranceaustraliagroup,insurance
+QBE,qbe.com,https://www.qbe.com/careers,qbe|qbeinsurance,insurance
+AustralianSuper,australiansuper.com,https://www.australiansuper.com/careers,australiansuper,super
+Telstra,telstra.com.au,https://careers.telstra.com/,telstra,telco
+Optus,optus.com.au,https://www.optus.com.au/about/careers,optus|singteloptus,telco
+TPG Telecom,tpgtelecom.com.au,https://www.tpgtelecom.com.au/careers,tpgtelecom|tpg,telco
+Woolworths Group,woolworthsgroup.com.au,https://www.woolworthsgroup.com.au/au/en/careers.html,woolworths|woolworthsgroup|wowgroup,retail
+Coles Group,colesgroup.com.au,https://www.colesgroup.com.au/careers/,coles|colesgroup,retail
+Wesfarmers,wesfarmers.com.au,https://www.wesfarmers.com.au/careers,wesfarmers,retail
+Endeavour Group,endeavourgroup.com.au,https://www.endeavourgroup.com.au/careers,endeavourgroup|endeavour,retail
+Qantas,qantas.com,https://www.qantas.com/au/en/about-us/careers.html,qantas|qantasairways,transport
+REA Group,rea-group.com,https://www.rea-group.com/careers/,reagroup|rea,media
+SEEK,seek.com.au,https://www.seek.com.au/careers,seek|seekcareers,media
+Domain Group,domain.com.au,https://www.domain.com.au/group/careers/,domain|domaingroup,media
+carsales,carsales.com.au,https://careers.carsales.com.au/,carsales|carsalescomlimited,media
+Nine Entertainment,nineforbrands.com.au,https://www.nineforbrands.com.au/careers/,nineentertainment|nine,media
+Quantium,quantium.com,https://quantium.com/careers/,quantium,consultancy
+Mantel Group,mantelgroup.com.au,https://mantelgroup.com.au/careers/,mantelgroup|mantel,consultancy
+Thoughtworks,thoughtworks.com,https://www.thoughtworks.com/careers,thoughtworks,consultancy
+DiUS,dius.com.au,https://dius.com.au/careers/,dius,consultancy
+Deloitte Australia,deloitte.com.au,https://www.deloitte.com/au/en/careers.html,deloitte|deloitteaustralia,consultancy
+KPMG Australia,kpmg.com.au,https://kpmg.com/au/en/careers.html,kpmg|kpmgaustralia,consultancy
+Accenture Australia,accenture.com,https://www.accenture.com/au-en/careers,accenture,consultancy
+CSIRO,csiro.au,https://www.csiro.au/en/careers,csiro|data61,gov
+Nearmap,nearmap.com,https://www.nearmap.com/au/en/careers,nearmap,tech
+ResMed,resmed.com,https://www.resmed.com/en-us/careers/,resmed,health
+Cochlear,cochlear.com,https://www.cochlear.com/au/en/corporate/careers,cochlear,health
+Transport for NSW,transport.nsw.gov.au,https://www.transport.nsw.gov.au/careers,transportfornsw|tfnsw,gov

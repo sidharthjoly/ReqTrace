@@ -1,0 +1,65 @@
+company,domain,segment,ats_vendor,board_token,careers_url,job_count,verified_via,notes,other_hits
+Accenture Australia,accenture.com,consultancy,workday,accenture.wd103/AccentureCareers,https://www.accenture.com/au-en/careers,,careers-page-html,accenture.wd103|site=AccentureCareers,workday:accenture
+Airtasker,airtasker.com,tech,ashby,airtasker,https://www.airtasker.com/careers/,5,endpoint-200,5 open roles (complete board),
+Airwallex,airwallex.com,tech,ashby,airwallex,https://www.airwallex.com/careers,579,endpoint-200,579 open roles (complete board),
+ANZ,anz.com,bank,successfactors,,https://www.anz.com/careers/,,careers-page-html,"found via careers-page-html | vendor detected, board token needs manual confirmation",successfactors:performancemanager10; successfactors:rmkcdn; successfactors:career10
+Block (Afterpay),block.xyz,fintech,greenhouse,block,https://block.xyz/careers,201,endpoint-200,201 open roles (complete board),
+Canva,canva.com,tech,smartrecruiters,canva,https://www.lifeatcanva.com/en/jobs/,265,endpoint-200,265 open roles (complete board),
+carsales,carsales.com.au,media,smartrecruiters,carsales,https://careers.carsales.com.au/,41,endpoint-200,41 open roles (complete board),
+Cochlear,cochlear.com,health,workday,cochlear.wd3/Cochlear_Careers,https://www.cochlear.com/au/en/corporate/careers,,careers-deep-crawl,cochlear.wd3|site=Cochlear_Careers,workday:cochlear
+Coles Group,colesgroup.com.au,retail,successfactors,,https://www.colesgroup.com.au/careers/,,careers-page-html,"found via careers-page-html | vendor detected, board token needs manual confirmation",successfactors:performancemanager10; successfactors:rmkcdn; successfactors:career10
+Commonwealth Bank,commbank.com.au,bank,workday,cba.wd3/CommBank_Careers,https://www.commbank.com.au/careers.html,,careers-page-html,cba.wd3|site=CommBank_Careers,workday:cba
+Culture Amp,cultureamp.com,tech,greenhouse,cultureamp,https://www.cultureamp.com/company/careers,38,endpoint-200,38 open roles (complete board),
+Deputy,deputy.com,tech,lever,deputy,https://www.deputy.com/careers,11,endpoint-200,11 open roles (complete board),
+DiUS,dius.com.au,consultancy,teamtailor,dius-1742167156,https://dius.com.au/careers/,,careers-page-html,found via careers-page-html,teamtailor:dius-1742167156
+Eucalyptus,eucalyptus.vc,tech,greenhouse,eucalyptus,https://eucalyptus.vc/careers,107,endpoint-200,107 open roles (complete board),
+IAG,iag.com.au,insurance,phenom,cdn,https://www.iag.com.au/careers,,careers-page-html,found via careers-page-html,phenom:cdn; phenom:pp-cdn; phenom:content-ir; phenom:cdn-prod-static; phenom:cdn-bot
+Immutable,immutable.com,tech,lever,immutable,https://www.immutable.com/careers,7,endpoint-200,7 open roles (complete board),
+Judo Bank,judo.bank,fintech,smartrecruiters,judobank,https://www.judo.bank/careers,25,endpoint-200,25 open roles (complete board),
+Kogan,kogan.com,tech,lever,kogan,https://www.kogan.com/au/careers/,23,endpoint-200,23 open roles (complete board),
+Lorikeet,lorikeetcx.ai,tech,ashby,lorikeet,https://www.lorikeetcx.ai/careers,10,endpoint-200,10 open roles (complete board),
+Macquarie Group,macquarie.com,bank,avature,,https://www.macquarie.com/au/en/careers.html,,careers-page-html,"found via careers-page-html | vendor detected, board token needs manual confirmation",avature:avature
+Mantel Group,mantelgroup.com.au,consultancy,teamtailor,,https://mantelgroup.com.au/careers/,,careers-page-html,"found via careers-page-html | vendor detected, board token needs manual confirmation",teamtailor:teamtailor
+National Australia Bank,nab.com.au,bank,eightfold,,https://careers.nab.com.au/,,careers-page-html,NOT REGISTERED: Eightfold tenant is the India delivery centre (0 of 267 roles in AU); NAB AU hiring runs on an unidentified system,eightfold:nab
+Nearmap,nearmap.com,tech,smartrecruiters,nearmap,https://www.nearmap.com/au/en/careers,34,endpoint-200,34 open roles (complete board),
+Nine Entertainment,nineforbrands.com.au,media,workday,nine.wd105/Nine_External_Career_Site,https://www.nineforbrands.com.au/careers/,,careers-deep-crawl,nine.wd105|site=Nine_External_Career_Site,workday:nine
+Octopus Deploy,octopus.com,tech,greenhouse,octopusdeploy,https://octopus.com/company/careers,4,endpoint-200,4 open roles (complete board),
+Pet Circle,petcircle.com.au,tech,teamtailor,petcircle-1744336448,https://www.petcircle.com.au/careers,,careers-page-html,found via careers-page-html,teamtailor:petcircle-1744336448; teamtailor:teamtailor
+Prospa,prospa.com,fintech,greenhouse,prospa,https://www.prospa.com/careers,6,endpoint-200,6 open roles (complete board),
+Q-CTRL,q-ctrl.com,tech,lever,q-ctrl,https://q-ctrl.com/careers,9,endpoint-200,9 open roles (complete board),
+QBE,qbe.com,insurance,phenom,cdn,https://www.qbe.com/careers,,careers-page-html,found via careers-page-html,phenom:cdn; phenom:pp-cdn; phenom:content-ir; phenom:cdn-prod-static; phenom:cdn-bot
+Quantium,quantium.com,consultancy,greenhouse,quantium,https://quantium.com/careers/,36,endpoint-200,36 open roles (complete board),
+Relevance AI,relevanceai.com,tech,ashby,relevanceai,https://relevanceai.com/careers,12,endpoint-200,12 open roles (complete board),
+ResMed,resmed.com,health,smartrecruiters,resmed,https://www.resmed.com/en-us/careers/,2,endpoint-200,2 open roles (complete board),
+Rokt,rokt.com,tech,workable,rokt,https://www.rokt.com/careers/,20,endpoint-200,20 open roles (complete board),
+SafetyCulture,safetyculture.com,tech,ashby,mitti,https://safetyculture.com/careers/,38,endpoint-200,38 open roles (complete board),ashby:mitti
+SEEK,seek.com.au,media,smartrecruiters,seek,https://www.seek.com.au/careers,44,endpoint-200,44 open roles (complete board),
+Telstra,telstra.com.au,telco,workday,telstra.wd3/Telstra_Careers,https://careers.telstra.com/,,careers-page-html,telstra.wd3|site=Telstra_Careers,workday:telstra
+Thoughtworks,thoughtworks.com,consultancy,greenhouse,thoughtworks,https://www.thoughtworks.com/careers,41,endpoint-200,41 open roles (complete board),
+TPG Telecom,tpgtelecom.com.au,telco,oracle,fa-ewlx-saasfaprod1.fa.ocs.oraclecloud.com/CX_1,https://www.tpgtelecom.com.au/careers,,endpoint-200,Oracle Recruiting Cloud,oracle-orc:fa-ewlx-saasfaprod1
+Transport for NSW,transport.nsw.gov.au,gov,successfactors,,https://www.transport.nsw.gov.au/careers,,careers-deep-crawl,"found via careers-deep-crawl | vendor detected, board token needs manual confirmation",successfactors:performancemanager10; successfactors:rmkcdn; successfactors:career10
+Tyro,tyro.com,fintech,teamtailor,,https://www.tyro.com/careers/,,careers-page-html,"found via careers-page-html | vendor detected, board token needs manual confirmation",teamtailor:teamtailor
+Up Bank,up.com.au,fintech,ashby,up,https://up.com.au/careers/,2,endpoint-200,2 open roles (complete board),
+Westpac,westpac.com.au,bank,oracle,ebuu.fa.ap1.oraclecloud.com/CX_1,https://www.westpac.com.au/about-westpac/careers/,,endpoint-200,Oracle Recruiting Cloud,oracle-orc:ebuu
+Woolworths Group,woolworthsgroup.com.au,retail,avature,,https://www.woolworthsgroup.com.au/au/en/careers.html,,careers-page-html,"found via careers-page-html | vendor detected, board token needs manual confirmation",avature:avature; pageup:pageup
+Zeller,myzeller.com,tech,lever,Zeller,https://www.myzeller.com/careers,20,endpoint-200,20 open roles (complete board),lever:Zeller
+Athena Home Loans,athena.com.au,fintech,,,https://www.athena.com.au/careers,,,no ATS fingerprint after 1-hop crawl,rejected greenhouse:athena
+Atlassian,atlassian.com,tech,,,https://www.atlassian.com/company/careers/all-jobs,,,no ATS fingerprint after 1-hop crawl,
+AustralianSuper,australiansuper.com,super,,,https://www.australiansuper.com/careers,,,australiansuper.com HTTP 403,
+CSIRO,csiro.au,gov,,,https://www.csiro.au/en/careers,,,csiro.au HTTP ERR,
+Deloitte Australia,deloitte.com.au,consultancy,,,https://www.deloitte.com/au/en/careers.html,,,deloitte.com.au HTTP ERR,
+Domain Group,domain.com.au,media,,,https://www.domain.com.au/group/careers/,,,domain.com.au HTTP 403,
+Employment Hero,employmenthero.com,tech,,,https://employmenthero.com/careers/,,,no ATS fingerprint after 1-hop crawl,
+Endeavour Group,endeavourgroup.com.au,retail,,,https://www.endeavourgroup.com.au/careers,,,no ATS fingerprint after 1-hop crawl,
+Go1,go1.com,tech,,,https://www.go1.com/careers,,,no ATS fingerprint after 1-hop crawl,
+Harrison.ai,harrison.ai,tech,,,https://harrison.ai/careers/,,,REJECTED: ashby:Harrison returns 404 (careers-markup false positive),ashby:Harrison
+KPMG Australia,kpmg.com.au,consultancy,,,https://kpmg.com/au/en/careers.html,,,no ATS fingerprint after 1-hop crawl,rejected smartrecruiters:kpmgaustralia
+Linktree,linktr.ee,tech,,,https://linktr.ee/s/about/careers/,,,linktr.ee HTTP 403,
+Marketplacer,marketplacer.com,tech,,,https://marketplacer.com/careers/,,,no ATS fingerprint after 1-hop crawl,
+Optus,optus.com.au,telco,,,https://www.optus.com.au/about/careers,,,no ATS fingerprint after 1-hop crawl,
+Qantas,qantas.com,transport,,,https://www.qantas.com/au/en/about-us/careers.html,,,no ATS fingerprint after 1-hop crawl,
+REA Group,rea-group.com,media,,,https://www.rea-group.com/careers/,,,no ATS fingerprint after 1-hop crawl,
+Suncorp,suncorp.com.au,insurance,,,https://www.suncorpgroup.com.au/careers.html,,,no ATS fingerprint after 1-hop crawl,
+Wesfarmers,wesfarmers.com.au,retail,,,https://www.wesfarmers.com.au/careers,,,no ATS fingerprint after 1-hop crawl,
+Zip Co,zip.co,fintech,,,https://zip.co/au/careers,,,no ATS fingerprint after 1-hop crawl,rejected ashby:zip
+TPG Telecom (CX_2),tpgtelecom.com.au,telco,oracle,fa-ewlx-saasfaprod1.fa.ocs.oraclecloud.com/CX_2,https://www.tpgtelecom.com.au/careers,,endpoint-200,"second CX site on the same tenant, different roles",

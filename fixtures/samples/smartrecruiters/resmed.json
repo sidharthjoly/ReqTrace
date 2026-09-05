@@ -1,0 +1,131 @@
+{
+ "totalFound": 2,
+ "content": [
+  {
+   "id": "743999668876490",
+   "name": "Administrative Assistant",
+   "uuid": "b5552459-0a3f-4026-afe9-29690061e6d4",
+   "jobAdId": "76a42143-10de-4be4-8496-b68a4edff69d",
+   "defaultJobAd": true,
+   "refNumber": "REF3E",
+   "company": {
+    "identifier": "Resmed",
+    "name": "Resmed"
+   },
+   "releasedDate": "2018-04-16T22:22:44.000Z",
+   "location": {
+    "city": "San Diego",
+    "region": "CA",
+    "country": "us",
+    "address": "9001 Spectrum Center Boulevard",
+    "postalCode": "92123",
+    "remote": false,
+    "hybrid": false,
+    "latitude": "32.8257199",
+    "longitude": "-117.13355280000002",
+    "fullLocation": "San Diego, CA, United States"
+   },
+   "industry": {
+    "id": "accounting",
+    "label": "Accounting"
+   },
+   "department": {},
+   "function": {
+    "id": "administrative",
+    "label": "Administrative"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "entry_level",
+    "label": "Entry Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "us",
+     "valueLabel": "United States"
+    },
+    {
+     "fieldId": "5ac57833b60a5e486a2d9c2e",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Resmed"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/resmed/postings/743999668876490",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "743999668337209",
+   "name": "Administrative Assistant",
+   "uuid": "9d673212-a66b-450d-a8f3-c6abf0ada9bb",
+   "jobAdId": "6e358b91-06e7-4f86-bcc2-f686f19975d9",
+   "defaultJobAd": true,
+   "refNumber": "REF2X",
+   "company": {
+    "identifier": "Resmed",
+    "name": "Resmed"
+   },
+   "releasedDate": "2018-04-05T01:17:20.000Z",
+   "location": {
+    "city": "San Diego",
+    "region": "CA",
+    "country": "us",
+    "address": "9001 Spectrum Center Boulevard",
+    "postalCode": "92123",
+    "remote": false,
+    "hybrid": false,
+    "latitude": "32.8257199",
+    "longitude": "-117.13355280000002",
+    "fullLocation": "San Diego, CA, United States"
+   },
+   "industry": {
+    "id": "accounting",
+    "label": "Accounting"
+   },
+   "department": {},
+   "function": {
+    "id": "administrative",
+    "label": "Administrative"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "entry_level",
+    "label": "Entry Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "us",
+     "valueLabel": "United States"
+    },
+    {
+     "fieldId": "5ac57833b60a5e486a2d9c2e",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Resmed"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/resmed/postings/743999668337209",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  }
+ ]
+}

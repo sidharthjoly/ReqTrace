@@ -1,0 +1,459 @@
+{
+ "totalFound": 41,
+ "content": [
+  {
+   "id": "744000147146759",
+   "name": "Senior Security Engineer - DevSecOps",
+   "uuid": "4dbb3e32-4e17-4550-9f58-ea30cb8ff79e",
+   "jobAdId": "52d8a3e0-794e-4f5a-ad1c-199f9f3103ed",
+   "defaultJobAd": false,
+   "refNumber": "REF1494G",
+   "company": {
+    "identifier": "carsales",
+    "name": "carsales"
+   },
+   "releasedDate": "2026-09-03T04:01:51.040Z",
+   "location": {
+    "city": "Melbourne",
+    "region": "VIC",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "hybridDescription": "1 day on site in Sydney or Melbourne",
+    "latitude": "-37.8136276",
+    "longitude": "144.9630576",
+    "fullLocation": "Melbourne, VIC, Australia"
+   },
+   "industry": {
+    "id": "it_and_services",
+    "label": "Information Technology And Services"
+   },
+   "department": {
+    "id": "3492725",
+    "label": "Security"
+   },
+   "function": {
+    "id": "information_technology",
+    "label": "Information Technology"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6af",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "carsales"
+    },
+    {
+     "fieldId": "60e650993f541042d0d922a9",
+     "fieldLabel": "Award( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "d3c74bbc-6c5a-4645-a195-58f996779679",
+     "valueLabel": "Professional Employees Award"
+    },
+    {
+     "fieldId": "60e650b378bf225846bf74ab",
+     "fieldLabel": "Level ( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "f6c0118b-25f0-4a77-a328-7755b4b588f4",
+     "valueLabel": "Level 4"
+    },
+    {
+     "fieldId": "61b28b693dc1ba67dda2142b",
+     "fieldLabel": "Employment Status",
+     "valueId": "0a4bb465-f1d7-428f-86b6-be8160738bdb",
+     "valueLabel": "Full Time"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6b0",
+     "fieldLabel": "Department",
+     "valueId": "3492725",
+     "valueLabel": "Security"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/carsales/postings/744000147146759",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "744000147146430",
+   "name": "Senior Security Engineer - DevSecOps",
+   "uuid": "49102629-0e8f-4a90-90de-d3be93496905",
+   "jobAdId": "bfa57f6d-e135-4f39-a991-9e7780c37f4b",
+   "defaultJobAd": true,
+   "refNumber": "REF1494G",
+   "company": {
+    "identifier": "carsales",
+    "name": "carsales"
+   },
+   "releasedDate": "2026-09-03T04:00:55.178Z",
+   "location": {
+    "city": "Sydney",
+    "region": "NSW",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "hybridDescription": "1 day on site in Sydney or Melbourne",
+    "latitude": "-33.8622503",
+    "longitude": "151.207684",
+    "fullLocation": "Sydney, NSW, Australia"
+   },
+   "industry": {
+    "id": "it_and_services",
+    "label": "Information Technology And Services"
+   },
+   "department": {
+    "id": "3492725",
+    "label": "Security"
+   },
+   "function": {
+    "id": "information_technology",
+    "label": "Information Technology"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6af",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "carsales"
+    },
+    {
+     "fieldId": "60e650993f541042d0d922a9",
+     "fieldLabel": "Award( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "d3c74bbc-6c5a-4645-a195-58f996779679",
+     "valueLabel": "Professional Employees Award"
+    },
+    {
+     "fieldId": "60e650b378bf225846bf74ab",
+     "fieldLabel": "Level ( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "f6c0118b-25f0-4a77-a328-7755b4b588f4",
+     "valueLabel": "Level 4"
+    },
+    {
+     "fieldId": "61b28b693dc1ba67dda2142b",
+     "fieldLabel": "Employment Status",
+     "valueId": "0a4bb465-f1d7-428f-86b6-be8160738bdb",
+     "valueLabel": "Full Time"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6b0",
+     "fieldLabel": "Department",
+     "valueId": "3492725",
+     "valueLabel": "Security"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/carsales/postings/744000147146430",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "744000147099329",
+   "name": "Technical Lead - Data Platform & Engineering",
+   "uuid": "14238cf9-0a23-4a0d-a14d-2eb46a2db150",
+   "jobAdId": "f5937e64-e4fb-4a4f-b65b-a6c9dbd20b0b",
+   "defaultJobAd": true,
+   "refNumber": "REF1483E",
+   "company": {
+    "identifier": "carsales",
+    "name": "carsales"
+   },
+   "releasedDate": "2026-09-03T00:44:35.141Z",
+   "location": {
+    "city": "Melbourne",
+    "region": "VIC",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "hybridDescription": "2-3 days office attendance expected",
+    "latitude": "-37.8136276",
+    "longitude": "144.9630576",
+    "fullLocation": "Melbourne, VIC, Australia"
+   },
+   "industry": {
+    "id": "automotive",
+    "label": "Automotive"
+   },
+   "department": {
+    "id": "9366871",
+    "label": "Data Platform and Engineering"
+   },
+   "function": {
+    "id": "engineering",
+    "label": "Engineering"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "60e650b378bf225846bf74ab",
+     "fieldLabel": "Level ( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "f6c0118b-25f0-4a77-a328-7755b4b588f4",
+     "valueLabel": "Level 4"
+    },
+    {
+     "fieldId": "61b28b693dc1ba67dda2142b",
+     "fieldLabel": "Employment Status",
+     "valueId": "0a4bb465-f1d7-428f-86b6-be8160738bdb",
+     "valueLabel": "Full Time"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6b0",
+     "fieldLabel": "Department",
+     "valueId": "9366871",
+     "valueLabel": "Data Platform and Engineering"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6af",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "carsales"
+    },
+    {
+     "fieldId": "60e650993f541042d0d922a9",
+     "fieldLabel": "Award( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "d3c74bbc-6c5a-4645-a195-58f996779679",
+     "valueLabel": "Professional Employees Award"
+    },
+    {
+     "fieldId": "690fe8103d293e9cfd9f24b9",
+     "fieldLabel": "hours per week",
+     "valueLabel": "38"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/carsales/postings/744000147099329",
+   "language": {
+    "code": "en-AU",
+    "label": "English (AU)",
+    "labelNative": "English (AU)"
+   }
+  },
+  {
+   "id": "744000147096609",
+   "name": "Senior Data Engineer - Data Platform & Engineering",
+   "uuid": "15a14b76-a4f1-4c1b-af41-713147b7a8a3",
+   "jobAdId": "ca14ed00-d23f-42ea-b18e-34a14da93802",
+   "defaultJobAd": true,
+   "refNumber": "REF1484O",
+   "company": {
+    "identifier": "carsales",
+    "name": "carsales"
+   },
+   "releasedDate": "2026-09-03T00:03:10.272Z",
+   "location": {
+    "city": "Melbourne",
+    "region": "VIC",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "hybridDescription": "2-3 days office attendance expected",
+    "latitude": "-37.8136276",
+    "longitude": "144.9630576",
+    "fullLocation": "Melbourne, VIC, Australia"
+   },
+   "industry": {
+    "id": "automotive",
+    "label": "Automotive"
+   },
+   "department": {
+    "id": "9366871",
+    "label": "Data Platform and Engineering"
+   },
+   "function": {
+    "id": "engineering",
+    "label": "Engineering"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "60e650b378bf225846bf74ab",
+     "fieldLabel": "Level ( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "f6c0118b-25f0-4a77-a328-7755b4b588f4",
+     "valueLabel": "Level 4"
+    },
+    {
+     "fieldId": "61b28b693dc1ba67dda2142b",
+     "fieldLabel": "Employment Status",
+     "valueId": "0a4bb465-f1d7-428f-86b6-be8160738bdb",
+     "valueLabel": "Full Time"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6b0",
+     "fieldLabel": "Department",
+     "valueId": "9366871",
+     "valueLabel": "Data Platform and Engineering"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6af",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "carsales"
+    },
+    {
+     "fieldId": "60e650993f541042d0d922a9",
+     "fieldLabel": "Award( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "d3c74bbc-6c5a-4645-a195-58f996779679",
+     "valueLabel": "Professional Employees Award"
+    },
+    {
+     "fieldId": "690fe8103d293e9cfd9f24b9",
+     "fieldLabel": "hours per week",
+     "valueLabel": "38"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/carsales/postings/744000147096609",
+   "language": {
+    "code": "en-AU",
+    "label": "English (AU)",
+    "labelNative": "English (AU)"
+   }
+  },
+  {
+   "id": "744000146893829",
+   "name": "Marketing Manager, B2B",
+   "uuid": "3b4029bc-e74b-4756-aee6-8db8f7638670",
+   "jobAdId": "2ffa2edd-143e-422b-90d2-2ce7892fb6be",
+   "defaultJobAd": true,
+   "refNumber": "REF1491B",
+   "company": {
+    "identifier": "carsales",
+    "name": "carsales"
+   },
+   "releasedDate": "2026-09-02T05:54:15.360Z",
+   "location": {
+    "city": "Melbourne",
+    "region": "VIC",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "latitude": "-37.8136276",
+    "longitude": "144.9630576",
+    "fullLocation": "Melbourne, VIC, Australia"
+   },
+   "industry": {
+    "id": "it_and_services",
+    "label": "Information Technology And Services"
+   },
+   "department": {
+    "id": "10973031",
+    "label": "Brand Strategy and Marketing"
+   },
+   "function": {
+    "id": "marketing",
+    "label": "Marketing"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "60e650b378bf225846bf74ab",
+     "fieldLabel": "Level ( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "e480c620-771c-4e4b-ae33-d4f0df511456",
+     "valueLabel": "Award Free"
+    },
+    {
+     "fieldId": "61b28b693dc1ba67dda2142b",
+     "fieldLabel": "Employment Status",
+     "valueId": "0a4bb465-f1d7-428f-86b6-be8160738bdb",
+     "valueLabel": "Full Time"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6b0",
+     "fieldLabel": "Department",
+     "valueId": "10973031",
+     "valueLabel": "Brand Strategy and Marketing"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "5fe28ab8facf6561ee54c6af",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "carsales"
+    },
+    {
+     "fieldId": "60e650993f541042d0d922a9",
+     "fieldLabel": "Award( Pls confirm with your People and Culture Business Partner)",
+     "valueId": "33b6c108-2596-4748-98a6-f7370a9d1496",
+     "valueLabel": "Award Free"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/carsales/postings/744000146893829",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  }
+ ]
+}

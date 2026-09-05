@@ -1,0 +1,28 @@
+[project]
+name = "reqtrace"
+version = "0.1.0"
+description = "A search index over Australian data roles, pulled straight from employers' ATS feeds"
+readme = "README.md"
+authors = [
+    { name = "Sidharth Joly", email = "sidharthjoly@mail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "httpx>=0.28.1",
+    "nh3>=0.3.7",
+    "psycopg[binary]>=3.3.5",
+    "pydantic>=2.13.5",
+    "tenacity>=9.1.4",
+]
+
+[project.scripts]
+reqtrace = "reqtrace:main"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

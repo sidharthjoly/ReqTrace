@@ -1,0 +1,345 @@
+{
+ "totalFound": 25,
+ "content": [
+  {
+   "id": "6000000001376857",
+   "name": "Director, Relationships ",
+   "uuid": "22066461-d12f-4bc5-adf0-86fa4176cdd0",
+   "jobAdId": "eabb26e1-73ca-4af2-b4ca-5a8efe5d1700",
+   "defaultJobAd": true,
+   "refNumber": "REF103X",
+   "company": {
+    "identifier": "JudoBank",
+    "name": "Judo Bank"
+   },
+   "releasedDate": "2026-09-04T03:23:00.996Z",
+   "location": {
+    "city": "Brisbane",
+    "region": "Queensland",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Brisbane, Queensland, Australia"
+   },
+   "industry": {
+    "id": "banking",
+    "label": "Banking"
+   },
+   "department": {
+    "id": "6000000000112217",
+    "label": "Customer"
+   },
+   "function": {
+    "id": "finance",
+    "label": "Finance"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d9",
+     "fieldLabel": "Department",
+     "valueId": "6000000000112217",
+     "valueLabel": "Customer"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d8",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Judo Bank"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/judobank/postings/6000000001376857",
+   "language": {
+    "code": "en-AU",
+    "label": "English (AU)",
+    "labelNative": "English (AU)"
+   }
+  },
+  {
+   "id": "6000000001372164",
+   "name": "Marketing Manager",
+   "uuid": "0bcf32a5-104c-4abe-949b-1b689e070eb0",
+   "jobAdId": "e9763477-e19f-4ba5-9170-c6c4a7a3417c",
+   "defaultJobAd": true,
+   "refNumber": "REF147F",
+   "company": {
+    "identifier": "JudoBank",
+    "name": "Judo Bank"
+   },
+   "releasedDate": "2026-09-03T01:35:52.008Z",
+   "location": {
+    "city": "Melbourne",
+    "region": "Victoria",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Melbourne, Victoria, Australia"
+   },
+   "industry": {
+    "id": "banking",
+    "label": "Banking"
+   },
+   "department": {
+    "id": "6000000000112217",
+    "label": "Customer"
+   },
+   "function": {
+    "id": "other",
+    "label": "Other"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d9",
+     "fieldLabel": "Department",
+     "valueId": "6000000000112217",
+     "valueLabel": "Customer"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d8",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Judo Bank"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/judobank/postings/6000000001372164",
+   "language": {
+    "code": "en-AU",
+    "label": "English (AU)",
+    "labelNative": "English (AU)"
+   }
+  },
+  {
+   "id": "6000000001372054",
+   "name": "Social Media and Content Associate",
+   "uuid": "6cab2df3-888e-40f2-8e2a-cc7d8e971211",
+   "jobAdId": "a5040bbd-74bf-41b2-aa55-58aafc344370",
+   "defaultJobAd": true,
+   "refNumber": "REF148I",
+   "company": {
+    "identifier": "JudoBank",
+    "name": "Judo Bank"
+   },
+   "releasedDate": "2026-09-03T01:14:58.209Z",
+   "location": {
+    "city": "Melbourne",
+    "region": "Victoria",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Melbourne, Victoria, Australia"
+   },
+   "industry": {
+    "id": "banking",
+    "label": "Banking"
+   },
+   "department": {
+    "id": "6000000000112217",
+    "label": "Customer"
+   },
+   "function": {
+    "id": "marketing",
+    "label": "Marketing"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "not_applicable",
+    "label": "Not Applicable"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d9",
+     "fieldLabel": "Department",
+     "valueId": "6000000000112217",
+     "valueLabel": "Customer"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d8",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Judo Bank"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/judobank/postings/6000000001372054",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "6000000001369292",
+   "name": "Service Associate",
+   "uuid": "b24abdec-b05c-4f6f-84ff-dec6a7eb3768",
+   "jobAdId": "6cdaf35b-fa69-4d27-bfb5-3bf4a8d0ac8b",
+   "defaultJobAd": true,
+   "refNumber": "REF151M",
+   "company": {
+    "identifier": "JudoBank",
+    "name": "Judo Bank"
+   },
+   "releasedDate": "2026-09-02T03:43:56.356Z",
+   "location": {
+    "city": "Melbourne",
+    "region": "Victoria",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Melbourne, Victoria, Australia"
+   },
+   "industry": {
+    "id": "banking",
+    "label": "Banking"
+   },
+   "department": {
+    "id": "6000000000112557",
+    "label": "Technology, Data & Operations"
+   },
+   "function": {
+    "id": "other",
+    "label": "Other"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "associate",
+    "label": "Associate"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d9",
+     "fieldLabel": "Department",
+     "valueId": "6000000000112557",
+     "valueLabel": "Technology, Data & Operations"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d8",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Judo Bank"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/judobank/postings/6000000001369292",
+   "language": {
+    "code": "en-AU",
+    "label": "English (AU)",
+    "labelNative": "English (AU)"
+   }
+  },
+  {
+   "id": "6000000001347802",
+   "name": "Tax Analyst",
+   "uuid": "81412e68-23b5-44e5-8577-3ceafdf2f218",
+   "jobAdId": "b85ef6bf-32ac-4b1e-8e3a-2977ead7437f",
+   "defaultJobAd": true,
+   "refNumber": "REF145I",
+   "company": {
+    "identifier": "JudoBank",
+    "name": "Judo Bank"
+   },
+   "releasedDate": "2026-08-25T04:56:14.875Z",
+   "location": {
+    "city": "Brisbane",
+    "region": "Queensland",
+    "country": "au",
+    "remote": false,
+    "hybrid": true,
+    "fullLocation": "Brisbane, Queensland, Australia"
+   },
+   "industry": {
+    "id": "banking",
+    "label": "Banking"
+   },
+   "department": {
+    "id": "6000000000112200",
+    "label": "Finance"
+   },
+   "function": {
+    "id": "other",
+    "label": "Other"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "au",
+     "valueLabel": "Australia"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d9",
+     "fieldLabel": "Department",
+     "valueId": "6000000000112200",
+     "valueLabel": "Finance"
+    },
+    {
+     "fieldId": "696f303918ba7a3e443147d8",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Judo Bank"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/judobank/postings/6000000001347802",
+   "language": {
+    "code": "en-AU",
+    "label": "English (AU)",
+    "labelNative": "English (AU)"
+   }
+  }
+ ]
+}
