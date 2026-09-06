@@ -12,8 +12,8 @@ the thing it is named for, and is worth more than the listings.
 **353 boards · 51,232 jobs · 3,356 open Australian roles · 279 of them data
 roles · 7 ATS adapters · 129 tests**
 
-Browse a snapshot at <https://sidharthjoly.com/ReqTrace/>; ingest health at
-<https://sidharthjoly.com/ReqTrace/runs.html>.
+Browse a snapshot at <https://reqtrace.sidharthjoly.com/>; ingest health at
+<https://reqtrace.sidharthjoly.com/runs.html>.
 
 ## Step 0 — the audit that decided the build order
 
@@ -175,7 +175,7 @@ entirely — the UI would fail for the length of every scheduled run.
 
 ## Static export
 
-**Live: <https://sidharthjoly.com/ReqTrace/>** — served from the `gh-pages`
+**Live: <https://reqtrace.sidharthjoly.com/>** — served from the `gh-pages`
 branch. The repo stays private; the *site* is public, because private Pages is
 Enterprise Cloud only. It lands on the personal domain rather than
 `github.io` because the account has an org-level custom domain, so every project

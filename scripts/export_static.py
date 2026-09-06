@@ -45,6 +45,11 @@ ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "src" / "reqtrace" / "static"
 SITE = ROOT / "site"
 PAGES = ("index.html", "runs.html")
+# The custom domain has to be rebuilt into `site/` on every export: `publish`
+# force-pushes an orphan commit built only from this directory, so a CNAME
+# file that GitHub writes to the gh-pages branch survives exactly until the
+# next publish and then the domain silently stops resolving.
+CNAME = "reqtrace.sidharthjoly.com"
 
 JOBS_SQL = """
 SELECT j.ats_vendor, j.board_token, j.external_id, j.title,
@@ -110,6 +115,7 @@ def build(db: Path) -> dict:
     # Pages would otherwise run the output through Jekyll, which drops files
     # and directories beginning with an underscore.
     (SITE / ".nojekyll").write_text("")
+    (SITE / "CNAME").write_text(CNAME + "\n")
 
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
