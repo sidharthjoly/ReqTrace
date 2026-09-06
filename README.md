@@ -605,6 +605,14 @@ uv run python -m reqtrace.web        # http://127.0.0.1:8765
 A stdlib HTTP server and two static HTML files — no framework, no bundler, no
 Node. Three endpoints (`/api/search`, `/api/stats`, `/api/runs`) and vanilla JS.
 
+The two pages are aimed at two different readers, and the split is deliberate.
+The front page is the **product**: someone looking for work, who does not care
+how the index is fed. Nothing about the pipeline appears on it — no board or
+adapter counts, no sweep status, no last-ingest timestamp, no closed-role
+tally, and no ATS vendor anywhere in the filters. It shows open roles and a way
+to narrow them, and that is all. Every operational figure lives on `/runs`
+instead, which the search page does not link to.
+
 `/runs` is the **ingest health** page. `board_runs` has logged a row per board
 per pass since the first commit and nothing ever read it back; once ingestion is
 scheduled rather than typed, that log is the only evidence the index is still
@@ -622,9 +630,21 @@ Search is FTS5 over title + body + company name. **The UI is SQLite-only for
 now** — `search.py` is sqlite3 throughout, so the server refuses to start with a
 clear message if `DATABASE_URL` is set. Ingestion already honours Postgres; the
 query layer needs a tsvector path before the UI can follow, and the indexes are
-waiting for it in `schema_postgres.sql`. Filters are the ones a job hunter actually narrows on:
-city, remote type, published salary, freshness, employer, and a data-roles
-toggle that is on by default.
+waiting for it in `schema_postgres.sql`. Filters are the four a job hunter
+actually narrows on — data roles (on by default) or all, city, work type, and
+posted this week — and the current search is written to the URL, so a search is
+a link.
+
+Three filters were cut rather than restyled. **Published salary**: 57 of 3,341
+open AU roles carry a structured band, so both the filter and the salary sort
+returned a screenful and then silently fell back to dates — a control that
+looks broken is worse than one that is absent. Salary still renders on the
+roles that have it. **Employer** and **ATS vendor**: the search box already
+matches on company name, and which applicant tracking system an employer
+happens to license is not something a candidate is shopping for. The city
+picker is a fixed metro list intersected with the index's own values, because
+the raw column holds `Barangaroo`, `North Ryde` and `MOUNT WAVERLEY` alongside
+the capitals.
 
 Two things the first screenshot exposed, both now fixed:
 

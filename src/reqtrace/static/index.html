@@ -1,341 +1,323 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ReqTrace</title>
+<title>ReqTrace — data roles in Australia</title>
+<meta name="description" content="Open data, analytics and machine learning roles in Australia, taken straight from employers' own hiring systems.">
 <style>
   :root {
-    /* Dark industrial console. The palette is deliberately monochrome: no hue
-       anywhere, so board state and freshness can never be carried by colour
-       alone — they are always a word, a fill weight, or an outline. */
-    --bg:#08080a; --panel:#0b0b0d; --well:#0e0e11; --track:#15151a;
-    --line:#1e1e22; --line-2:#26262a; --line-3:#33333a;
-    --ink:#f2f2f3; --ink-2:#e4e4e6; --dim:#c9c9cd; --muted:#a8a8ad;
-    --faint:#8a8a8f; --fainter:#7a7a7d;
-    --hover:#101014; --active:#141418;
-    /* Barlow is the Industry system's pairing. It is not webfont-loaded: this
-       page also ships as a static export that must work as an opened file, so
-       the stack degrades to whatever condensed face the OS has. The character
-       here is uppercase, letterspacing and weight, which all survive that. */
-    --cond:'Barlow Condensed','Barlow SemiCondensed',ui-sans-serif,system-ui,-apple-system,sans-serif;
-    --body:'Barlow',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
-    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    /* Warm paper, one green accent, no other hue. The page is a consumer
+       product now: nothing about the pipeline is on screen, so the palette
+       carries content and state only. */
+    --paper:#fbfaf8; --veil:rgba(251,250,248,.86); --card:#fff; --sunk:#f2efe9;
+    --ink:#17150f; --body:#3d3931; --muted:#6f6a61; --faint:#948e84;
+    --line:#eae5dc; --line-2:#ddd7cc;
+    --accent:#2f5d4c; --accent-ink:#274c3f; --accent-tint:#e9f0ec;
+    --shadow:0 1px 2px rgba(30,25,15,.04), 0 8px 24px -14px rgba(30,25,15,.10);
+    --lift:0 2px 5px rgba(30,25,15,.05), 0 16px 36px -16px rgba(30,25,15,.18);
+    /* No webfont: this page also ships as a static export that has to work as
+       a file opened from disk. `ui-serif` is New York on Apple platforms and
+       Georgia everywhere else — both are good enough to carry the wordmark. */
+    --serif:ui-serif,'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
   }
   * { box-sizing:border-box; }
-  html, body { margin:0; background:var(--bg); }
-  body { color:var(--ink); font:14px/1.55 var(--body); }
-  a { color:var(--ink); text-decoration:none; }
-  ::selection { background:var(--ink); color:var(--bg); }
-  *:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
-  input::placeholder { color:var(--fainter); }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--paper); color:var(--body);
+    font:15px/1.6 var(--sans); -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility; }
+  a { color:inherit; text-decoration:none; }
+  ::selection { background:var(--accent-tint); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px; }
 
-  .app { min-height:100vh; display:grid; grid-template-columns:minmax(0,232px) minmax(0,1fr); }
+  /* ---- masthead ---- */
+  .masthead { display:flex; align-items:baseline; gap:14px; padding:26px 0 0; }
+  .mark { font-family:var(--serif); font-size:21px; letter-spacing:-.012em;
+    color:var(--ink); }
+  .mark em { font-style:normal; color:var(--accent); }
+  .masthead .tag { font-size:12.5px; color:var(--faint); }
+  @media (max-width:560px) { .masthead .tag { display:none; } }
 
-  /* ---- sidebar ---- */
-  .side { border-right:1px solid var(--line); background:var(--panel);
-    display:flex; flex-direction:column; position:sticky; top:0;
-    align-self:start; height:100vh; overflow-y:auto; }
-  .brand { padding:20px 18px 16px; border-bottom:1px solid var(--line); }
-  .brand .mark { display:flex; align-items:center; gap:9px; }
-  .brand .name { font-family:var(--cond); font-weight:600; font-size:19px;
-    letter-spacing:.14em; text-transform:uppercase; line-height:1; }
-  .brand .sub { margin-top:7px; font-size:10px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--muted); font-variant-numeric:tabular-nums; }
-  .nav { padding:14px 10px; display:flex; flex-direction:column; gap:2px; }
-  .nav .h { padding:0 8px 8px; font-size:10px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--faint); }
-  .nav a { display:flex; align-items:center; gap:10px; padding:8px 9px;
-    border:1px solid transparent; color:var(--muted); font-family:var(--cond);
-    font-weight:600; font-size:14px; letter-spacing:.09em; text-transform:uppercase; }
-  .nav a:hover { background:var(--active); color:#fff; }
-  .nav a[aria-current=page] { background:var(--active); border-color:var(--line-3); color:#fff; }
-  .nav a .ico { display:flex; width:16px; height:16px; flex:none; }
-  .nav a .n { margin-left:auto; font-family:var(--body); font-weight:400; font-size:11px;
-    letter-spacing:0; color:var(--muted); font-variant-numeric:tabular-nums; }
-  .sweep { margin-top:auto; padding:16px 18px; border-top:1px solid var(--line);
-    display:flex; flex-direction:column; gap:10px; }
-  .sweep .h { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); }
-  .sweep .state { display:flex; align-items:center; gap:8px; font-family:var(--cond);
-    font-weight:600; letter-spacing:.09em; text-transform:uppercase; font-size:13px; }
-  .sweep .state i { width:6px; height:6px; background:var(--ink); flex:none; }
-  .sweep .state.is-degraded i { background:var(--muted); }
-  .sweep .state.is-bad i { background:transparent; border:1px solid var(--ink); }
-  .sweep .when { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; line-height:1.5; }
-  .spark { display:flex; gap:1px; height:22px; align-items:flex-end; }
-  .spark span { flex:1; background:var(--ink); min-height:2px; }
-  .spark span.last { background:var(--muted); }
-  .sweep .cap { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); }
+  /* ---- hero ---- */
+  .hero { padding:52px 0 30px; }
+  h1 { margin:0; font-family:var(--serif); font-weight:500; color:var(--ink);
+    font-size:clamp(31px,5.2vw,45px); line-height:1.08; letter-spacing:-.022em;
+    max-width:15ch; text-wrap:balance; }
+  .hero p { margin:16px 0 0; max-width:52ch; font-size:16px; color:var(--muted);
+    text-wrap:pretty; }
 
-  /* ---- header ---- */
-  .col { min-width:0; display:flex; flex-direction:column; }
-  header { border-bottom:1px solid var(--line); background:var(--panel);
-    position:sticky; top:0; z-index:5; }
-  .topbar { display:flex; align-items:center; gap:16px; padding:0 20px; min-height:48px;
-    border-bottom:1px solid var(--line); flex-wrap:wrap; }
-  .topbar .t { font-family:var(--cond); font-weight:600; font-size:15px;
-    letter-spacing:.12em; text-transform:uppercase; }
-  .vr { width:1px; height:16px; background:var(--line-2); }
-  .topbar .s { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
-  .topbar .right { margin-left:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-  .stamp { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; letter-spacing:.06em; }
-  .mode { display:flex; align-items:center; gap:7px; padding:4px 9px; border:1px solid var(--line-2); }
-  .mode i { width:5px; height:5px; background:var(--ink); }
-  .mode span { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+  /* ---- search + filters ---- */
+  .controls { position:sticky; top:0; z-index:20; padding:14px 0;
+    background:var(--veil); -webkit-backdrop-filter:saturate(1.6) blur(14px);
+    backdrop-filter:saturate(1.6) blur(14px);
+    border-bottom:1px solid transparent; transition:border-color .2s; }
+  .controls.stuck { border-bottom-color:var(--line); }
+  .search { display:flex; align-items:center; gap:12px; height:56px; padding:0 8px 0 17px;
+    background:var(--card); border:1px solid var(--line-2); border-radius:13px;
+    box-shadow:var(--shadow); transition:border-color .18s, box-shadow .18s; }
+  .search:focus-within { border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-tint), var(--lift); }
+  .search svg { flex:none; color:var(--faint); }
+  .search input { flex:1; min-width:0; height:100%; border:0; background:transparent;
+    font:inherit; font-size:16.5px; color:var(--ink); outline:none; }
+  .search input::placeholder { color:var(--faint); }
+  .search input::-webkit-search-decoration,
+  .search input::-webkit-search-cancel-button { -webkit-appearance:none; }
+  .xq { flex:none; width:30px; height:30px; margin-right:6px; display:none;
+    place-items:center; border:0; border-radius:50%; background:var(--sunk);
+    color:var(--muted); cursor:pointer; font-size:15px; line-height:1; }
+  .xq:hover { background:var(--line-2); color:var(--ink); }
+  .xq.on { display:grid; }
 
-  .searchwrap { padding:14px 20px 0; }
-  .findbar { display:flex; border:1px solid var(--line-2); background:var(--well); }
-  /* The bar is one control: it takes the ring, not the borderless input inside it. */
-  .findbar:focus-within { outline:2px solid var(--ink); outline-offset:-1px; }
-  .findbar input:focus-visible { outline:none; }
-  .findbar .ico { display:flex; align-items:center; padding:0 12px;
-    border-right:1px solid var(--line-2); color:var(--muted); }
-  .findbar input { flex:1; min-width:0; background:transparent; border:0; padding:11px 12px;
-    color:var(--ink); font:inherit; font-size:14px; letter-spacing:.01em; }
-  .findbar .hits { display:flex; align-items:center; padding:0 12px;
-    border-left:1px solid var(--line-2); font-size:11px; letter-spacing:.1em;
-    text-transform:uppercase; color:var(--muted); font-variant-numeric:tabular-nums;
-    white-space:nowrap; }
-  .findbar button { border:0; border-left:1px solid var(--line-2); background:var(--ink);
-    color:var(--bg); padding:0 18px; cursor:pointer; font-family:var(--cond);
-    font-weight:600; font-size:14px; letter-spacing:.12em; text-transform:uppercase; }
-  .findbar button:hover { background:#fff; }
+  .filters { display:flex; align-items:center; gap:9px; margin-top:12px; flex-wrap:wrap; }
+  .seg { display:inline-flex; gap:2px; padding:3px; background:var(--sunk);
+    border-radius:999px; }
+  .seg button { border:0; background:transparent; border-radius:999px; cursor:pointer;
+    font:inherit; font-size:13.5px; font-weight:500; color:var(--muted); padding:6px 15px;
+    transition:color .15s, background .15s; }
+  .seg button:hover { color:var(--ink); }
+  .seg button[aria-pressed=true] { background:var(--card); color:var(--ink);
+    box-shadow:0 1px 2px rgba(30,25,15,.08); }
+  .pill { display:inline-flex; align-items:center; height:34px; padding:0 14px;
+    border:1px solid var(--line-2); border-radius:999px; background:var(--card);
+    color:var(--body); font:inherit; font-size:13.5px; cursor:pointer;
+    transition:border-color .15s, background .15s, color .15s; }
+  .pill:hover { border-color:var(--faint); }
+  .pill[aria-pressed=true] { background:var(--ink); border-color:var(--ink); color:#fff; }
+  select.pill { appearance:none; -webkit-appearance:none; padding-right:31px;
+    background-repeat:no-repeat; background-position:right 12px center;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236f6a61' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+  select.pill.set { border-color:var(--accent); background-color:var(--accent-tint);
+    color:var(--accent-ink); }
+  .reset { margin-left:auto; border:0; background:none; cursor:pointer; font:inherit;
+    font-size:13px; color:var(--muted); text-decoration:underline;
+    text-underline-offset:3px; text-decoration-color:var(--line-2); padding:6px 2px; }
+  .reset:hover { color:var(--ink); }
+  .reset[hidden] { display:none; }
 
-  .filters { display:flex; flex-wrap:wrap; gap:8px; padding:12px 0 14px; align-items:center; }
-  .chip { padding:5px 11px; border:1px solid var(--line-2); background:transparent;
-    color:var(--dim); cursor:pointer; font-size:11px; letter-spacing:.12em;
-    text-transform:uppercase; user-select:none; display:inline-flex; align-items:center; gap:7px; }
-  .chip:hover { border-color:var(--fainter); }
-  .chip i { width:5px; height:5px; background:var(--faint); }
-  .chip[aria-pressed=true] { background:var(--ink); color:var(--bg); border-color:var(--ink); }
-  .chip[aria-pressed=true] i { background:var(--bg); }
-  .sel { display:inline-flex; align-items:center; gap:8px; padding:5px 11px;
-    border:1px solid var(--line-2); background:var(--well); font-size:11px;
-    letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
-  .sel .k { color:var(--faint); }
-  .sel select { appearance:none; -webkit-appearance:none; background:transparent; border:0;
-    color:var(--dim); font:inherit; letter-spacing:.1em; text-transform:uppercase;
-    cursor:pointer; padding:0 14px 0 0; max-width:15ch;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23a8a8ad' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat:no-repeat; background-position:right center; }
-  .sel select option { background:var(--panel); color:var(--ink); text-transform:none;
-    letter-spacing:0; }
+  /* ---- results ---- */
+  main { padding-bottom:56px; }
+  .rhead { display:flex; align-items:center; gap:14px; padding:28px 2px 13px; }
+  .rhead .n { font-size:14px; color:var(--muted); }
+  .rhead .n b { color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  .rhead .sort { margin-left:auto; display:flex; align-items:center; gap:7px;
+    font-size:13px; color:var(--faint); }
+  .rhead select { appearance:none; -webkit-appearance:none; border:0; background:none;
+    font:inherit; font-size:13.5px; color:var(--body); cursor:pointer; padding-right:17px;
+    background-repeat:no-repeat; background-position:right center;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236f6a61' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
 
-  /* ---- main ---- */
-  main { padding:20px; display:flex; flex-direction:column; gap:20px; min-width:0; }
-  /* The 1px gap is the grid: the wrapper's background shows through as rules,
-     so the cells never need borders of their own. */
-  .tiles { display:grid; gap:1px; background:var(--line); border:1px solid var(--line);
-    grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .tile { position:relative; background:var(--panel); padding:14px 16px 15px; }
-  .tile .k { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
-  .tile .v { font-family:var(--cond); font-weight:600; font-size:34px; line-height:1.05;
-    letter-spacing:-.01em; font-variant-numeric:tabular-nums; margin-top:6px; }
-  .tile .v.quiet { color:var(--faint); }
-  .tile .sub { font-size:11px; color:var(--faint); margin-top:3px; font-variant-numeric:tabular-nums; }
-  /* Registration mark — the one ornament the Industry system asks for. */
-  .tile::after { content:''; position:absolute; top:6px; right:6px; width:5px; height:5px;
-    border-top:1px solid var(--line-3); border-right:1px solid var(--line-3); }
-
-  .panel { border:1px solid var(--line); background:var(--panel); min-width:0; }
-  .panel-h { padding:11px 16px; border-bottom:1px solid var(--line); font-size:10px;
-    letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
-    display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-  .panel-h .note { font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums;
-    letter-spacing:.06em; text-transform:none; }
-  .panel-h .r { margin-left:auto; font-size:10px; letter-spacing:.14em; color:var(--faint); }
-
-  .jobs { display:flex; flex-direction:column; gap:1px; background:var(--line);
-    border:1px solid var(--line); }
-  .jobs > * { background:var(--panel); }
-  .job { padding:14px 16px; display:grid; grid-template-columns:minmax(0,1fr) auto;
-    gap:6px 20px; align-items:start; }
-  .job:hover { background:var(--hover); }
-  .job .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
-  .job h2 { margin:0; font-family:var(--cond); font-weight:600; font-size:19px;
-    letter-spacing:.01em; }
-  .job h2 a:hover { color:#fff; text-decoration:underline; }
-  .fresh { font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:2px 7px;
-    background:var(--ink); color:var(--bg); font-weight:500; }
-  .meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:5px;
-    font-size:12px; color:var(--faint); font-variant-numeric:tabular-nums; }
-  .meta .co { color:var(--ink-2); letter-spacing:.06em; text-transform:uppercase; font-size:11px; }
-  .meta .sep { width:1px; height:11px; background:var(--line-2); }
-  .tag { font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:1px 6px;
-    border:1px solid var(--line-3); color:var(--dim); }
-  .snip { margin-top:8px; font-size:13px; color:var(--faint); max-width:78ch;
+  .roles { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .role { display:grid; grid-template-columns:46px minmax(0,1fr) auto; gap:0 16px;
+    align-items:start; padding:18px 20px; background:var(--card);
+    border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow);
+    transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+  .role:hover { transform:translateY(-1px); box-shadow:var(--lift);
+    border-color:var(--line-2); }
+  @media (prefers-reduced-motion:reduce) { .role { transition:none; }
+    .role:hover { transform:none; } }
+  .mono { width:46px; height:46px; border-radius:12px; display:grid; place-items:center;
+    font-size:14.5px; font-weight:600; letter-spacing:.01em; }
+  /* Six muted tints, picked by a hash of the employer name — the list needs
+     rhythm, and every employer having the same grey square is not it. */
+  .t0 { background:#e7eee8; color:#3f5f4c; } .t1 { background:#f3e8e0; color:#8a5236; }
+  .t2 { background:#f1ecdc; color:#75632f; } .t3 { background:#e6eaef; color:#43566a; }
+  .t4 { background:#ece7f0; color:#584a70; } .t5 { background:#f4e6ea; color:#83405a; }
+  .role h2 { margin:0; font-size:17px; font-weight:600; line-height:1.35;
+    letter-spacing:-.006em; color:var(--ink); }
+  .role:hover h2 { color:var(--accent-ink); }
+  .org { margin-top:4px; font-size:13.5px; color:var(--muted); }
+  .org b { font-weight:500; color:var(--body); }
+  .org i { font-style:normal; color:#c9c1b3; padding:0 6px; }
+  .excerpt { margin:9px 0 0; font-size:13.5px; line-height:1.55; color:var(--faint);
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-    overflow:hidden; text-wrap:pretty; }
-  .rail { display:flex; flex-direction:column; align-items:flex-end; gap:7px; text-align:right; }
-  .pay { font-family:var(--cond); font-weight:600; font-size:16px; letter-spacing:.04em;
-    font-variant-numeric:tabular-nums; }
-  .req { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint);
-    font-family:var(--mono); max-width:18ch; overflow:hidden; text-overflow:ellipsis;
-    white-space:nowrap; }
-  .apply { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line-3);
-    padding:5px 11px; font-family:var(--cond); font-weight:600; font-size:12px;
-    letter-spacing:.12em; text-transform:uppercase; }
-  .apply:hover { background:var(--ink); color:var(--bg); }
-  .more { display:block; width:100%; border:0; background:var(--panel); padding:11px 16px;
-    text-align:center; font-family:var(--cond); font-weight:600; font-size:13px;
-    letter-spacing:.14em; text-transform:uppercase; color:var(--faint); cursor:pointer; }
-  .more:hover { color:#fff; }
-  .empty { padding:40px 16px; text-align:center; color:var(--faint); font-size:13px; }
+    overflow:hidden; }
+  .aside { display:flex; flex-direction:column; align-items:flex-end; gap:5px;
+    text-align:right; padding-top:2px; }
+  .pay { font-size:13.5px; font-weight:600; color:var(--ink);
+    font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .when { font-size:12.5px; color:var(--faint); white-space:nowrap; }
+  .when.fresh { color:var(--accent-ink); font-weight:500; }
+  .cta { margin-top:5px; display:inline-flex; align-items:center; gap:5px;
+    font-size:12.5px; font-weight:500; color:var(--faint); white-space:nowrap;
+    transition:color .16s; }
+  .role:hover .cta { color:var(--accent-ink); }
 
-  .split { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
-  .split > * { flex:1 1 320px; }
-  .bars { padding:14px 16px; display:flex; flex-direction:column; gap:9px; }
-  .bars .row { display:grid; grid-template-columns:96px minmax(0,1fr) 52px; gap:12px;
-    align-items:center; }
-  .bars .nm { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .bars .track { height:7px; background:var(--track); }
-  .bars .fill { height:7px; background:var(--ink); }
-  .bars .n { font-size:12px; color:var(--faint); text-align:right; font-variant-numeric:tabular-nums; }
-  .prov { padding:14px 16px; display:flex; flex-direction:column; gap:11px; font-size:12px;
-    color:var(--faint); line-height:1.6; }
-  .prov .kv { display:flex; justify-content:space-between; gap:12px; }
-  .prov .kv .k { letter-spacing:.1em; text-transform:uppercase; font-size:11px; color:var(--faint); }
-  .prov .kv .v { color:var(--ink-2); text-align:right; }
-  .prov .hr { height:1px; background:var(--line); }
-  .prov p { margin:0; text-wrap:pretty; }
+  .more { display:block; margin:22px auto 0; padding:0 24px; height:42px;
+    border:1px solid var(--line-2); border-radius:999px; background:var(--card);
+    font:inherit; font-size:14px; font-weight:500; color:var(--body); cursor:pointer;
+    box-shadow:var(--shadow); }
+  .more:hover { border-color:var(--faint); color:var(--ink); }
+  .more[hidden] { display:none; }
 
-  footer { padding:6px 0 24px; font-size:11px; color:var(--faint); letter-spacing:.06em;
-    display:flex; gap:16px; flex-wrap:wrap; }
-  footer .path { margin-left:auto; font-family:var(--mono); }
+  .empty { padding:60px 24px; text-align:center; background:var(--card);
+    border:1px solid var(--line); border-radius:14px; }
+  .empty h3 { margin:0; font-family:var(--serif); font-weight:500; font-size:21px;
+    color:var(--ink); }
+  .empty p { margin:8px 0 18px; font-size:14px; color:var(--muted); }
 
-  @media (max-width:900px) {
-    .app { grid-template-columns:minmax(0,1fr); }
-    .side { position:static; height:auto; border-right:0;
-      border-bottom:1px solid var(--line); }
-    .sweep { margin-top:0; }
-    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    .job { grid-template-columns:minmax(0,1fr); }
-    .rail { align-items:flex-start; text-align:left; }
+  /* Skeletons: the export loads the whole AU set once, so first paint is a
+     beat behind the page. Better a shape than a blank. */
+  .sk { display:grid; grid-template-columns:46px minmax(0,1fr); gap:0 16px;
+    padding:18px 20px; background:var(--card); border:1px solid var(--line);
+    border-radius:14px; }
+  .sk span, .sk i { display:block; border-radius:8px; background:var(--sunk);
+    animation:pulse 1.5s ease-in-out infinite; }
+  .sk span { width:46px; height:46px; border-radius:12px; }
+  .sk i { height:11px; margin-bottom:9px; }
+  .sk i:nth-child(1) { width:44%; height:14px; }
+  .sk i:nth-child(2) { width:28%; }
+  .sk i:nth-child(3) { width:82%; margin-bottom:0; }
+  .sk:nth-child(2) i:nth-child(1) { width:56%; }
+  .sk:nth-child(3) i:nth-child(1) { width:36%; }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.45 } }
+  @media (prefers-reduced-motion:reduce) { .sk span, .sk i { animation:none } }
+
+  footer { border-top:1px solid var(--line); padding:26px 0 48px; }
+  footer .row { display:flex; gap:10px 22px; flex-wrap:wrap; align-items:baseline;
+    font-size:12.5px; color:var(--faint); }
+  footer .row .m { font-family:var(--serif); font-size:15px; color:var(--muted); }
+  footer .row .r { margin-left:auto; }
+
+  @media (max-width:660px) {
+    .hero { padding:40px 0 24px; }
+    .role { grid-template-columns:40px minmax(0,1fr); gap:0 14px; }
+    .mono { width:40px; height:40px; border-radius:11px; font-size:13px; }
+    .aside { grid-column:2; flex-direction:row; align-items:center; text-align:left;
+      gap:12px; margin-top:11px; flex-wrap:wrap; }
+    .cta { margin-top:0; margin-left:auto; }
+    .filters { gap:8px; }
   }
 </style>
 
-<div class="app">
-  <aside class="side">
-    <div class="brand">
-      <div class="mark">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 12h18"></path><path d="M12 3v18"></path></svg>
-        <div class="name">ReqTrace</div>
-      </div>
-      <div class="sub">AU requisition index · v0.1</div>
+<div class="wrap">
+  <header class="masthead">
+    <a class="mark" href="./">Req<em>Trace</em></a>
+    <span class="tag">Australian data &amp; analytics roles</span>
+  </header>
+
+  <section class="hero">
+    <h1>Data roles in Australia, straight from the source.</h1>
+    <p>Every opening here comes from the employer&rsquo;s own hiring system — one
+      listing per role, no reposts, and Apply takes you to the employer. Filled
+      roles drop off.</p>
+  </section>
+</div>
+
+<div class="controls" id="controls">
+  <div class="wrap">
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      <input type="search" id="q" autocomplete="off" spellcheck="false"
+        placeholder="Search roles, employers or skills" aria-label="Search roles">
+      <button class="xq" id="xq" type="button" aria-label="Clear search">&times;</button>
     </div>
-    <nav class="nav">
-      <div class="h">Console</div>
-      <a href="index.html" aria-current="page">
-        <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg></span>
-        <span>Search</span><span class="n" id="nav-search">—</span>
-      </a>
-      <a href="runs.html">
-        <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg></span>
-        <span>Ingest</span><span class="n" id="nav-runs">—</span>
-      </a>
-    </nav>
-    <div class="sweep" id="sweep" hidden>
-      <div class="h">Sweep</div>
-      <div class="state" id="sweep-state"></div>
-      <div class="when" id="sweep-when"></div>
-      <div class="spark" id="sweep-spark"></div>
-      <div class="cap" id="sweep-cap"></div>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Role type">
+        <button type="button" id="cat-data" aria-pressed="true">Data &amp; AI</button>
+        <button type="button" id="cat-all" aria-pressed="false">All roles</button>
+      </div>
+      <select class="pill" id="city" aria-label="Location"><option value="">Anywhere in Australia</option></select>
+      <select class="pill" id="work" aria-label="Work type">
+        <option value="">Any work type</option>
+        <option value="remote">Remote</option>
+        <option value="hybrid">Hybrid</option>
+        <option value="onsite">On-site</option>
+      </select>
+      <button class="pill" type="button" id="fresh" aria-pressed="false">New this week</button>
+      <button class="reset" type="button" id="reset" hidden>Clear filters</button>
     </div>
-  </aside>
-
-  <div class="col">
-    <header>
-      <div class="topbar">
-        <div class="t">Requisition search</div>
-        <div class="vr"></div>
-        <div class="s" id="stats">loading index…</div>
-        <div class="right">
-          <div class="stamp" id="stamp"></div>
-          <div class="mode"><i></i><span id="mode">Live index</span></div>
-        </div>
-      </div>
-      <div class="searchwrap">
-        <div class="findbar">
-          <div class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg></div>
-          <input type="search" id="q" placeholder="title, employer, description · FTS5 prefix match" autofocus>
-          <div class="hits" id="count"></div>
-          <button id="go">Query</button>
-        </div>
-        <div class="filters">
-          <span class="chip" id="f-data" role="button" tabindex="0" aria-pressed="true"><i></i>Data roles</span>
-          <span class="chip" id="f-salary" role="button" tabindex="0" aria-pressed="false"><i></i>Has salary</span>
-          <span class="chip" id="f-remote" role="button" tabindex="0" aria-pressed="false"><i></i>Remote only</span>
-          <span class="chip" id="f-fresh" role="button" tabindex="0" aria-pressed="false"><i></i>New this week</span>
-          <div class="vr"></div>
-          <span class="sel"><span class="k">City</span><select id="city" aria-label="City"><option value="">All</option></select></span>
-          <span class="sel"><span class="k">Employer</span><select id="company" aria-label="Employer"><option value="">All</option></select></span>
-          <span class="sel"><span class="k">Source</span><select id="vendor" aria-label="Source"><option value="">All</option></select></span>
-          <span class="sel"><span class="k">Sort</span><select id="sort" aria-label="Sort">
-            <option value="newest">Newest</option>
-            <option value="relevance">Relevance</option>
-            <option value="salary">Salary</option>
-          </select></span>
-        </div>
-      </div>
-    </header>
-
-    <main>
-      <div class="tiles" id="tiles"></div>
-
-      <div class="jobs">
-        <div class="panel-h">
-          <span>Requisitions</span>
-          <span class="note" id="sortnote"></span>
-          <span class="r" id="range"></span>
-        </div>
-        <div id="results"></div>
-        <button class="more" id="more" hidden>Load next 50</button>
-      </div>
-
-      <div class="split">
-        <div class="panel">
-          <div class="panel-h">Open AU roles by city</div>
-          <div class="bars" id="cities"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-h">Index provenance</div>
-          <div class="prov">
-            <div class="kv"><span class="k">Identity</span><span class="v">ATS requisition id — one record per role</span></div>
-            <div class="kv"><span class="k">Closure</span><span class="v">full-board diff, complete snapshots only</span></div>
-            <div class="kv"><span class="k">Search scope</span><span class="v" id="scope">titles, employers, full descriptions</span></div>
-            <div class="hr"></div>
-            <p id="prov-note">Pulled straight from employers' ATS feeds; apply links go to
-              the employer. Roles that close disappear on the next run.</p>
-          </div>
-        </div>
-      </div>
-
-      <footer>
-        <span>One record per requisition · apply links resolve to the employer · closed roles disappear on the next sweep</span>
-        <span class="path">data/logs/ingest.log</span>
-      </footer>
-    </main>
   </div>
 </div>
 
+<main class="wrap">
+  <div class="rhead">
+    <div class="n" id="count" aria-live="polite" role="status">&nbsp;</div>
+    <label class="sort">Sort
+      <select id="sort" aria-label="Sort roles">
+        <option value="newest">Newest</option>
+        <option value="relevance">Best match</option>
+      </select>
+    </label>
+  </div>
+
+  <ol class="roles" id="results">
+    <li class="sk"><span></span><div><i></i><i></i><i></i></div></li>
+    <li class="sk"><span></span><div><i></i><i></i><i></i></div></li>
+    <li class="sk"><span></span><div><i></i><i></i><i></i></div></li>
+  </ol>
+  <button class="more" id="more" type="button" hidden>Show more roles</button>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="m">ReqTrace</span>
+    <span>Listings are read from employers&rsquo; hiring systems and refreshed daily.</span>
+    <span class="r">Apply links go to the employer.</span>
+  </div>
+</footer>
+
 <script>
 const $ = s => document.querySelector(s);
-const state = { offset: 0, total: 0, shown: 0 };
 
+// One page, two backends. Served by `reqtrace.web` it queries /api/search
+// against FTS5; served as a static export (or opened as a file) it loads the
+// whole AU set once and filters in the browser. 3.3k rows is small enough that
+// a search library would be ceremony — and it is why the export is AU-only:
+// the full 51k index is 28MB.
+const STATIC = { on:false, jobs:[], data:[], exclude:[] };
+const PAGE = 50;
+const state = { q:'', cat:'data', city:'', work:'', fresh:false, sort:'newest',
+                offset:0 };
+
+/* ---------- url state: a search is a link ---------- */
+
+function readURL() {
+  const u = new URLSearchParams(location.search);
+  state.q = u.get('q') || '';
+  state.cat = u.get('roles') === 'all' ? 'all' : 'data';
+  state.city = u.get('city') || '';
+  state.work = ['remote','hybrid','onsite'].includes(u.get('work')) ? u.get('work') : '';
+  state.fresh = u.get('new') === '1';
+  state.sort = u.get('sort') === 'relevance' ? 'relevance' : 'newest';
+}
+
+function writeURL() {
+  const u = new URLSearchParams();
+  if (state.q) u.set('q', state.q);
+  if (state.cat === 'all') u.set('roles', 'all');
+  if (state.city) u.set('city', state.city);
+  if (state.work) u.set('work', state.work);
+  if (state.fresh) u.set('new', '1');
+  if (state.sort !== 'newest') u.set('sort', state.sort);
+  const qs = u.toString();
+  history.replaceState(null, '', qs ? '?' + qs : location.pathname);
+}
+
+// The public URL keeps friendly names; the query layer keeps its own.
 function params(offset = 0) {
   const p = new URLSearchParams();
-  if ($('#q').value.trim()) p.set('q', $('#q').value.trim());
-  if ($('#f-data').ariaPressed === 'true') p.set('data_only', '1');
-  if ($('#f-salary').ariaPressed === 'true') p.set('has_salary', '1');
-  if ($('#f-remote').ariaPressed === 'true') p.set('remote', 'remote');
-  if ($('#f-fresh').ariaPressed === 'true') p.set('days', '7');
-  for (const id of ['city', 'company', 'vendor']) if ($('#' + id).value) p.set(id, $('#' + id).value);
-  p.set('sort', $('#sort').value);
+  if (state.q) p.set('q', state.q);
+  if (state.cat === 'data') p.set('data_only', '1');
+  if (state.city) p.set('city', state.city);
+  if (state.work) p.set('remote', state.work);
+  if (state.fresh) p.set('days', '7');
+  p.set('sort', state.sort);
   p.set('offset', offset);
   return p;
 }
 
-// Prefer the employer's own publish date; first_seen_at only records when this
-// index noticed the role, which would read "today" for every row on a fresh DB.
+const dirty = () => !!(state.q || state.city || state.work || state.fresh
+  || state.cat !== 'data');
+
+/* ---------- formatting ---------- */
+
+const esc = s => (s ?? '').toString().replace(/[<>&"]/g,
+  c => ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;' }[c]));
+const n = v => (v ?? 0).toLocaleString();
+
+// The employer's own publish date, not first_seen_at — the latter only records
+// when this index noticed a role, which would read "today" for every row.
 const daysAgo = j => {
   const iso = j.posted_at || j.first_seen_at;
   if (!iso) return null;
@@ -343,69 +325,80 @@ const daysAgo = j => {
   return Number.isFinite(d) ? Math.max(d, 0) : null;
 };
 
-const ago = d => d === null ? '' : (d === 0 ? 'today' : d === 1 ? 'yesterday'
-  : d < 30 ? d + 'd ago' : d < 365 ? Math.round(d / 30) + 'mo ago' : 'over a year ago');
+const ago = d => d === null ? '' : d === 0 ? 'Today' : d === 1 ? 'Yesterday'
+  : d < 30 ? d + ' days ago' : d < 60 ? 'Last month'
+  : d < 365 ? Math.round(d / 30) + ' months ago' : 'Over a year ago';
 
 const money = j => {
   if (!j.salary_min) return null;
-  const f = n => (n >= 1000 ? Math.round(n / 1000) + 'k' : n);
+  const f = v => v >= 1000 ? Math.round(v / 1000) + 'k' : v;
   const cur = (j.salary_currency || '').replace('AUD', 'A$').replace('USD', 'US$');
   const range = j.salary_max && j.salary_max !== j.salary_min
-    ? `${f(j.salary_min)}–${f(j.salary_max)}` : f(j.salary_min);
-  return `${cur}${range}${j.salary_period ? '/' + j.salary_period : ''}`;
+    ? f(j.salary_min) + '–' + f(j.salary_max) : f(j.salary_min);
+  return cur + range + (j.salary_period ? '/' + j.salary_period : '');
 };
 
-const esc = s => (s ?? '').toString().replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-const n = v => (v ?? 0).toLocaleString();
+const WORK = { remote:'Remote', hybrid:'Hybrid', onsite:'On-site' };
+
+// SmartRecruiters puts its own field label at the top of every description, so
+// a third of the list opens with the words "Job Description". Stripped for
+// display only — the stored text is the vendor's, and normalising it belongs in
+// the ingest path if it ever matters to more than the preview.
+const preview = t => (t || '').replace(/^\s*Job Description[:\s-]*/i, '').trim();
+
+// Vendors hand back city names in whatever case the recruiter typed, so the
+// index holds "MOUNT WAVERLEY" next to "Sydney". Fix it for display only.
+const place = s => !s ? '' : s === s.toUpperCase() && s.length > 3
+  ? s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : s;
+
+const initials = s => {
+  const w = (s || '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+  if (!w.length) return '··';
+  return (w.length > 1 ? w[0][0] + w[1][0] : w[0].slice(0, 2)).toUpperCase();
+};
+
+const tint = s => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % 6;
+};
 
 function card(j) {
   const d = daysAgo(j);
-  const where = [j.location_city, j.location_country].filter(Boolean).join(', ') || j.location_raw || '—';
+  const co = j.company || '';
+  const where = place(j.location_city) || place(j.location_raw) || 'Australia';
   const sal = money(j);
-  const fresh = d !== null && d <= 7;
-  return `<article class="job">
+  const dot = '<i>&middot;</i>';
+  return `<li><a class="role" href="${esc(j.apply_url)}" target="_blank" rel="noopener">
+    <span class="mono t${tint(co)}" aria-hidden="true">${esc(initials(co))}</span>
     <div>
-      <div class="head">
-        <h2><a href="${esc(j.apply_url)}" target="_blank" rel="noopener">${esc(j.title)}</a></h2>
-        ${fresh ? `<span class="fresh">${esc(ago(d))}</span>` : ''}
-      </div>
-      <div class="meta">
-        <span class="co">${esc(j.company)}</span>
-        <span class="sep"></span>
-        <span>${esc(where)}</span>
-        ${j.remote_type && j.remote_type !== 'unknown' ? `<span class="tag">${esc(j.remote_type)}</span>` : ''}
-        ${j.seniority && j.seniority !== 'Not Applicable' ? `<span>${esc(j.seniority)}</span>` : ''}
-        ${!fresh && d !== null ? `<span>${esc(ago(d))}</span>` : ''}
-      </div>
-      ${j.snippet ? `<div class="snip">${esc(j.snippet)}</div>` : ''}
+      <h2>${esc(j.title)}</h2>
+      <div class="org"><b>${esc(co)}</b>${dot}${esc(where)}${
+        WORK[j.remote_type] ? dot + WORK[j.remote_type] : ''}</div>
+      ${j.snippet ? `<p class="excerpt">${esc(preview(j.snippet))}${
+        j.snippet.length >= 319 ? '…' : ''}</p>` : ''}
     </div>
-    <div class="rail">
+    <div class="aside">
       ${sal ? `<span class="pay">${esc(sal)}</span>` : ''}
-      <span class="req" title="${esc(j.ats_vendor)}:${esc(j.board_token)}">${esc(j.external_id)}</span>
-      <a class="apply" href="${esc(j.apply_url)}" target="_blank" rel="noopener">Apply
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg>
-      </a>
+      <span class="when${d !== null && d <= 7 ? ' fresh' : ''}">${esc(ago(d))}</span>
+      <span class="cta">Apply
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg>
+      </span>
     </div>
-  </article>`;
+  </a></li>`;
 }
 
-// Two backends behind one page. Served by reqtrace.web it queries /api/search
-// against FTS5; served as a static export (GitHub Pages, or just opening the
-// file) it loads the whole AU set once and filters in the browser. 3,356 rows
-// is small enough that a search library would be ceremony — and it is exactly
-// why the export is AU-only: the full 51k index is 28MB.
-const STATIC = { on: false, jobs: [], data: [], exclude: [], as_of: null };
+/* ---------- the browser-side backend ---------- */
 
 async function detectStatic() {
   try {
-    const r = await fetch('data/manifest.json', { cache: 'no-store' });
+    const r = await fetch('data/manifest.json', { cache:'no-store' });
     if (!r.ok) return false;
     const m = await r.json();
-    // The data-role terms come from the export, never retyped here: the server
-    // filter was already subtly wrong once ("Senior Tax Analyst"), and two
+    // The data-role terms ship with the export rather than being retyped here:
+    // the server filter was subtly wrong once ("Senior Tax Analyst"), and two
     // copies of it would drift apart on the next fix.
     STATIC.data = m.data_terms; STATIC.exclude = m.analyst_exclude;
-    STATIC.as_of = m.generated_at;
     STATIC.jobs = await (await fetch('data/jobs.json')).json();
     STATIC.on = true;
     return true;
@@ -423,20 +416,12 @@ function searchLocal(p) {
   const q = (p.get('q') || '').toLowerCase().trim();
   // FTS5 prefix-matches each term; substring matching here is slightly looser.
   const terms = q ? q.split(/\s+/).filter(Boolean) : [];
-  const cutoff = p.get('days')
-    ? Date.now() - (+p.get('days')) * 864e5 : null;
+  const cutoff = p.get('days') ? Date.now() - (+p.get('days')) * 864e5 : null;
 
-  let rows = STATIC.jobs.filter(j => {
+  const rows = STATIC.jobs.filter(j => {
     if (p.get('data_only') && !isDataRole(j.title)) return false;
-    if (p.get('has_salary') && j.salary_min == null) return false;
     if (p.get('remote') && j.remote_type !== p.get('remote')) return false;
-    for (const k of ['city', 'company', 'vendor']) {
-      const want = p.get(k);
-      if (!want) continue;
-      const got = k === 'city' ? j.location_city
-        : k === 'company' ? j.company : j.ats_vendor;
-      if (got !== want) return false;
-    }
+    if (p.get('city') && j.location_city !== p.get('city')) return false;
     if (cutoff !== null) {
       const d = new Date((j.posted_at || j.first_seen_at || '').replace(' ', 'T'));
       if (!(d >= cutoff)) return false;
@@ -450,11 +435,7 @@ function searchLocal(p) {
 
   const when = j => new Date((j.posted_at || j.first_seen_at || 0)
     .toString().replace(' ', 'T')).getTime() || 0;
-  const sort = p.get('sort');
-  if (sort === 'salary') {
-    rows.sort((a, b) => (b.salary_max ?? -Infinity) - (a.salary_max ?? -Infinity)
-      || when(b) - when(a));
-  } else if (sort === 'relevance' && terms.length) {
+  if (p.get('sort') === 'relevance' && terms.length) {
     // The server ranks with FTS5 bm25. Approximated here as "how many query
     // terms hit the title", which is the part of bm25 a reader would notice.
     const score = j => terms.filter(t => j.title.toLowerCase().includes(t)).length;
@@ -464,205 +445,163 @@ function searchLocal(p) {
   }
 
   const off = +p.get('offset') || 0;
-  return { total: rows.length, results: rows.slice(off, off + 50),
-           facets: off ? null : localFacets() };
+  return { total:rows.length, results:rows.slice(off, off + PAGE),
+           facets:off ? null : { cities:localCities() } };
 }
 
-function localFacets() {
-  const top = (key, n) => {
-    const c = new Map();
-    for (const j of STATIC.jobs) {
-      const v = key(j);
-      if (v) c.set(v, (c.get(v) || 0) + 1);
-    }
-    return [...c].sort((a, b) => b[1] - a[1]).slice(0, n)
-      .map(([k, v]) => ({ key: k, n: v }));
-  };
-  return {
-    cities: top(j => j.location_city, 12),
-    companies: top(j => j.company, 15),
-    vendors: top(j => j.ats_vendor, 6),
-    remote: top(j => j.remote_type, 6),
-  };
+function localCities() {
+  const c = new Map();
+  for (const j of STATIC.jobs) if (j.location_city)
+    c.set(j.location_city, (c.get(j.location_city) || 0) + 1);
+  return [...c].sort((a, b) => b[1] - a[1]).slice(0, 12)
+    .map(([k, v]) => ({ key:k, n:v }));
 }
 
-const SORT_NOTE = { newest: 'SORTED BY POSTED_AT DESC',
-  relevance: 'RANKED BY FTS5 BM25', salary: 'SORTED BY SALARY_MAX DESC' };
+/* ---------- loading ---------- */
 
-let timer;
+let timer, cityDone = false, seq = 0;
+
+const notice = (head, note, id, label) => `<li class="empty">
+  <h3>${head}</h3><p>${note}</p>
+  <button class="pill" type="button" id="${id}">${label}</button></li>`;
+
 async function load(more = false) {
-  state.offset = more ? state.offset + 50 : 0;
+  const mine = ++seq;
+  state.offset = more ? state.offset + PAGE : 0;
   const p = params(state.offset);
-  const t0 = performance.now();
-  const d = STATIC.on ? searchLocal(p)
-    : await (await fetch('/api/search?' + p)).json();
-  const ms = Math.max(Math.round(performance.now() - t0), 1);
-  state.total = d.total;
-  state.shown = more ? state.shown + d.results.length : d.results.length;
-  $('#count').textContent = `${n(d.total)} hit${d.total === 1 ? '' : 's'} · ${ms} ms`;
-  $('#sortnote').textContent = `${n(d.total)} OPEN · ${SORT_NOTE[$('#sort').value] || ''}`;
-  $('#range').textContent = d.total ? `1–${n(state.shown)} of ${n(d.total)}` : '';
-  const html = d.results.map(card).join('');
-  $('#results').innerHTML = more ? $('#results').innerHTML + html : (html ||
-    '<div class="empty">Nothing matches. Try dropping a filter.</div>');
-  $('#more').hidden = state.offset + d.results.length >= d.total;
-  $('#nav-search').textContent = n(d.total);
-  if (!more) fillFacets(d.facets);
-}
 
-let facetsDone = false;
-function fillFacets(f) {
-  if (facetsDone || !f) return;
-  facetsDone = true;
-  const fill = (sel, items) => {
-    const el = $(sel);
-    for (const it of items) {
-      if (!it.key) continue;
-      const o = document.createElement('option');
-      o.value = it.key; o.textContent = `${it.key} (${it.n})`;
-      el.append(o);
-    }
-  };
-  fill('#city', f.cities); fill('#company', f.companies); fill('#vendor', f.vendors);
-  cityBars(f.cities);
-}
-
-function cityBars(cities) {
-  const rows = (cities || []).filter(c => c.key).slice(0, 6);
-  if (!rows.length) { $('#cities').innerHTML = '<div class="n">—</div>'; return; }
-  const max = rows[0].n || 1;
-  $('#cities').innerHTML = rows.map(c => `<div class="row">
-    <div class="nm" title="${esc(c.key)}">${esc(c.key)}</div>
-    <div class="track"><div class="fill" style="width:${Math.round(c.n / max * 100)}%"></div></div>
-    <div class="n">${n(c.n)}</div>
-  </div>`).join('');
-}
-
-// Index-wide figures, not filter-scoped: fetched once and cached. On the live
-// backend each /api/search builds a full facet rollup regardless of limit, so
-// these must not be refetched on every keystroke.
-async function indexFigures() {
-  if (STATIC.on) {
-    const day = 864e5, now = Date.now();
-    const at = j => new Date((j.posted_at || j.first_seen_at || '').replace(' ', 'T')).getTime();
-    let today = 0, week = 0, salary = 0;
-    for (const j of STATIC.jobs) {
-      const t = at(j);
-      if (t >= now - day) today++;
-      if (t >= now - 7 * day) week++;
-      if (j.salary_min != null) salary++;
-    }
-    return { today, week, salary };
-  }
-  const count = async q => {
-    try { return (await (await fetch('/api/search?limit=1&' + q)).json()).total; }
-    catch { return null; }
-  };
-  const [today, week, salary] = await Promise.all(
-    [count('days=1'), count('days=7'), count('has_salary=1')]);
-  return { today, week, salary };
-}
-
-function tiles(s, fig) {
-  const t = [
-    ['Open AU roles', n(s.au_open), `of ${n(s.jobs ?? s.open)} indexed`],
-    ['Data roles', n(state.total), 'current filter'],
-    ['Posted today', fig.today == null ? '—' : n(fig.today),
-      fig.week == null ? '' : `${n(fig.week)} this week`],
-    ['With salary', fig.salary == null ? '—' : n(fig.salary), 'structured bands only'],
-    ['Employer boards', n(s.boards), `${n(s.vendors)} ATS adapters`],
-    ['Closed & retired', n(s.closed), 'traced since first sweep', true],
-  ];
-  $('#tiles').innerHTML = t.map(([k, v, sub, quiet]) => `<div class="tile">
-    <div class="k">${esc(k)}</div>
-    <div class="v${quiet ? ' quiet' : ''}">${v}</div>
-    <div class="sub">${esc(sub)}</div>
-  </div>`).join('');
-}
-
-// The sidebar's sweep block is real run-log data, not decoration. The search
-// page has no other dependency on the run log, so a missing or failed health
-// fetch hides the block rather than inventing a state or breaking search.
-async function sweep() {
-  let d = null;
+  let d;
   try {
-    const r = await fetch('data/health.json', { cache: 'no-store' });
-    if (r.ok) d = await r.json();
-  } catch { /* fall through to the live endpoint */ }
-  if (!d) {
-    try { d = await (await fetch('/api/runs')).json(); } catch { return; }
+    d = STATIC.on ? searchLocal(p) : await (await fetch('/api/search?' + p)).json();
+    // A 500 from /api/search is `{error: ...}`, which would otherwise reach
+    // `d.results.map` and leave the skeletons up forever. Nothing on this page
+    // reports index health any more, so an unexplained permanent spinner is
+    // the only thing the reader would see.
+    if (!d || !Array.isArray(d.results)) throw new Error((d && d.error) || 'bad response');
+  } catch {
+    if (mine !== seq) return;
+    // A failed "show more" keeps the rows already on screen and rewinds the
+    // offset, so the button that is still there retries the same page.
+    if (more) { state.offset = Math.max(state.offset - PAGE, 0); return; }
+    $('#count').textContent = '';
+    $('#results').innerHTML = notice('Roles could not be loaded',
+      'Something went wrong reaching the index. Check your connection and try again.',
+      'load-retry', 'Try again');
+    $('#load-retry').onclick = () => load();
+    $('#more').hidden = true;
+    return;
   }
-  if (!d || d.error || !d.summary || !d.summary.ever_run) return;
-  const s = d.summary;
-  $('#nav-runs').textContent = n(s.boards);
-  const h = s.last_run ? (Date.now() - new Date(s.last_run.replace(' ', 'T'))) / 36e5 : null;
-  const bad = s.failed > 0 || (h !== null && h > s.stale_hours);
-  const level = bad ? 'bad' : (s.incomplete > 0 || s.stale > 0) ? 'degraded' : 'ok';
-  const label = level === 'ok' ? 'Healthy' : level === 'degraded' ? 'Degraded' : 'Stalled';
-  $('#sweep-state').className = 'state is-' + level;
-  $('#sweep-state').innerHTML = `<i></i>${label}`;
-  const age = h === null ? 'never' : h < 1 ? Math.max(Math.round(h * 60), 1) + ' min ago'
-    : h < 48 ? Math.round(h) + 'h ago' : Math.round(h / 24) + 'd ago';
-  $('#sweep-when').innerHTML = `Last board ${esc(age)}<br>A board unseen for ${s.stale_hours}h is stale`;
-  const recent = (d.recent || []).slice(0, 24).reverse();
-  if (recent.length) {
-    const max = Math.max(...recent.map(r => r.fetched || 0), 1);
-    $('#sweep-spark').innerHTML = recent.map((r, i) =>
-      `<span class="${i === recent.length - 1 ? 'last' : ''}" style="height:${
-        Math.max(Math.round((r.fetched || 0) / max * 22), 2)}px"></span>`).join('');
-    $('#sweep-cap').textContent = `${recent.length} board fetches`;
+
+  // Typing fires a request every 200ms and /api/search does not answer in
+  // order. Without this an earlier, slower response lands last and the list
+  // stops matching the box.
+  if (mine !== seq) return;
+
+  $('#count').innerHTML = d.total
+    ? `<b>${n(d.total)}</b> open role${d.total === 1 ? '' : 's'}`
+    : 'No roles found';
+
+  const html = d.results.map(card).join('');
+  if (more) {
+    $('#results').insertAdjacentHTML('beforeend', html);
+  } else {
+    $('#results').innerHTML = html || notice('Nothing matches that yet',
+      'Try a broader search, or widen the filters.', 'empty-reset', 'Clear filters');
+    if (!html) $('#empty-reset').onclick = reset;
   }
-  $('#sweep').hidden = false;
+  $('#more').hidden = state.offset + d.results.length >= d.total;
+  if (!more) cities(d.facets);
 }
 
-for (const id of ['#f-data', '#f-salary', '#f-remote', '#f-fresh']) {
-  const el = $(id);
-  const toggle = () => {
-    el.ariaPressed = el.ariaPressed === 'true' ? 'false' : 'true';
-    load();
-  };
-  el.onclick = toggle;
-  el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+// Only the metros: the raw column carries suburbs ("Barangaroo", "North Ryde")
+// and vendor-cased noise, which is not a location picker anyone wants. Values
+// stay the index's own strings so both backends filter identically.
+const METROS = ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Canberra',
+                'Hobart', 'Darwin', 'Gold Coast', 'Newcastle', 'Wollongong'];
+
+function cities(f) {
+  if (cityDone || !f || !f.cities) return;
+  cityDone = true;
+  const have = new Map(f.cities.filter(c => c.key)
+    .map(c => [c.key.toLowerCase(), c.key]));
+  const sel = $('#city');
+  for (const m of METROS) {
+    const key = have.get(m.toLowerCase());
+    if (!key) continue;
+    const o = document.createElement('option');
+    o.value = key; o.textContent = m;
+    sel.append(o);
+  }
+  // A shared link can name a city the picker does not list; keep it selectable
+  // rather than silently dropping the filter the results are already using.
+  if (state.city && !sel.querySelector(`option[value="${CSS.escape(state.city)}"]`)) {
+    const o = document.createElement('option');
+    o.value = state.city; o.textContent = place(state.city);
+    sel.append(o);
+  }
+  sel.value = state.city;
+  paint();
 }
-for (const id of ['#city', '#company', '#vendor', '#sort']) $(id).onchange = () => load();
-// The Query button submits immediately; typing still searches on its own after
-// a beat, so the button is a shortcut past the debounce, not the only way in.
-$('#q').oninput = () => { clearTimeout(timer); timer = setTimeout(load, 220); };
-$('#go').onclick = () => { clearTimeout(timer); load(); };
-$('#q').onkeydown = e => { if (e.key === 'Enter') { clearTimeout(timer); load(); } };
+
+/* ---------- controls ---------- */
+
+function paint() {
+  $('#q').value = state.q;
+  $('#xq').classList.toggle('on', !!state.q);
+  $('#cat-data').ariaPressed = String(state.cat === 'data');
+  $('#cat-all').ariaPressed = String(state.cat === 'all');
+  $('#city').value = state.city;
+  $('#work').value = state.work;
+  $('#city').classList.toggle('set', !!state.city);
+  $('#work').classList.toggle('set', !!state.work);
+  $('#fresh').ariaPressed = String(state.fresh);
+  $('#sort').value = state.sort;
+  $('#reset').hidden = !dirty();
+}
+
+function apply() { paint(); writeURL(); load(); }
+
+function reset() {
+  Object.assign(state, { q:'', cat:'data', city:'', work:'', fresh:false });
+  apply();
+}
+
+$('#q').oninput = e => {
+  state.q = e.target.value.trim();
+  $('#xq').classList.toggle('on', !!e.target.value);
+  $('#reset').hidden = !dirty();
+  clearTimeout(timer);
+  timer = setTimeout(() => { writeURL(); load(); }, 200);
+};
+$('#q').onkeydown = e => {
+  if (e.key === 'Enter') { clearTimeout(timer); e.target.blur(); apply(); }
+};
+$('#xq').onclick = () => { state.q = ''; clearTimeout(timer); apply(); $('#q').focus(); };
+$('#cat-data').onclick = () => { state.cat = 'data'; apply(); };
+$('#cat-all').onclick = () => { state.cat = 'all'; apply(); };
+$('#city').onchange = e => { state.city = e.target.value; apply(); };
+$('#work').onchange = e => { state.work = e.target.value; apply(); };
+$('#sort').onchange = e => { state.sort = e.target.value; apply(); };
+$('#fresh').onclick = () => { state.fresh = !state.fresh; apply(); };
+$('#reset').onclick = reset;
 $('#more').onclick = () => load(true);
 
-const summarise = s =>
-  `${n(s.au_open)} open AU roles · ${n(s.boards)} boards · ${n(s.vendors)} adapters`;
-
-const stampOf = iso => new Date(iso).toLocaleString(undefined,
-  { dateStyle: 'medium', timeStyle: 'short' });
-
-detectStatic().then(async isStatic => {
-  const s = isStatic
-    ? (await (await fetch('data/manifest.json')).json()).stats
-    : await (await fetch('/api/stats')).json();
-  $('#stats').textContent = summarise(s);
-
-  if (isStatic) {
-    // A static export is a snapshot, not a live index. Say when it was taken —
-    // without it the page silently claims yesterday's roles are open today.
-    $('#mode').textContent = 'Static export';
-    $('#stamp').textContent = 'SNAPSHOT ' + stampOf(STATIC.as_of);
-    // The live index searches full descriptions through FTS5; the export
-    // carries a 320-character preview, so a query whose only match is deep in
-    // a body finds nothing here. That is a smaller result set for a reason,
-    // and the page should say which reason rather than look under-populated.
-    $('#scope').textContent = 'titles, employers, 320-char previews';
-    $('#prov-note').textContent = "Pulled straight from employers' ATS feeds; apply "
-      + 'links go to the employer. Roles that close disappear on the next run. The '
-      + 'live index searches full descriptions — this snapshot searches previews.';
-  } else {
-    $('#stamp').textContent = 'LIVE ' + stampOf(Date.now());
-  }
-
-  await load();
-  tiles(s, await indexFigures());
-  sweep();
+document.addEventListener('keydown', e => {
+  if (e.key !== '/' || e.metaKey || e.ctrlKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  e.preventDefault();
+  $('#q').focus();
 });
+
+// The bar only earns its rule once something has scrolled under it.
+const sentinel = document.createElement('div');
+sentinel.style.height = '1px';
+$('#controls').before(sentinel);
+new IntersectionObserver(([e]) =>
+  $('#controls').classList.toggle('stuck', !e.isIntersecting)
+).observe(sentinel);
+
+readURL();
+paint();
+detectStatic().then(() => load());
 </script>
