@@ -78,7 +78,12 @@ jobs:
         run: uv run python scripts/export_static.py
 
       - name: Publish to gh-pages
-        if: ${{ inputs.publish != false }}
+        # Not `inputs.publish != false`: a scheduled run carries no inputs, so
+        # that condition is false on exactly the runs this workflow exists for
+        # — the sweep and the export both succeed, the export is discarded with
+        # the runner, and the site silently serves the previous day's index
+        # while Actions stays green. The dispatch input still opts out.
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
