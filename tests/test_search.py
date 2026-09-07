@@ -2,6 +2,7 @@
 so its precision matters more than its recall."""
 
 import sqlite3
+from datetime import date
 
 import pytest
 
@@ -117,3 +118,87 @@ def test_finance_operations_analysts_are_excluded(conn):
     clause = " ".join(where)
     assert "loan" in " ".join(str(p) for p in params)
     assert clause  # the exclusion list is actually applied
+
+
+# -- the dial: an absolute window, and the series drawn behind it -------------
+
+TODAY = date(2026, 9, 7)          # a Monday, so the last week starts on it
+
+
+@pytest.fixture
+def dated(tmp_path):
+    """Four data roles on known publish dates, plus one outside the chart."""
+    store = Store(sqlite_path=tmp_path / "d.db")
+    store.init_schema()
+    store.reconcile(BoardSnapshot(
+        ats_vendor="greenhouse", board_token="acme", complete=True, jobs=[
+            j("1", "Data Scientist", posted_at="2026-09-02"),      # week 15
+            j("2", "Data Engineer", posted_at="2026-09-01"),       # week 15
+            j("3", "Analytics Lead", posted_at="2026-08-26"),      # week 14
+            j("4", "Machine Learning Engineer", posted_at="2026-05-01"),  # off-chart
+        ]))
+    S.reindex(store.conn)
+    yield store.conn
+    store.close()
+
+
+def test_window_selects_one_week(dated):
+    """The dial hands the query two dates, not an age: an export read three days
+    later must still filter to the bars it was drawn against."""
+    res = S.search(dated, S.Query(since="2026-08-31", until="2026-09-07"))
+    assert titles(res) == {"Data Scientist", "Data Engineer"}
+
+
+def test_window_end_is_exclusive(dated):
+    """`until` is the next week's Monday, so a role posted on it belongs to the
+    next bar and not to this one."""
+    assert S.search(dated, S.Query(since="2026-08-24", until="2026-08-31")).total == 1
+    assert S.search(dated, S.Query(since="2026-08-24", until="2026-09-07")).total == 3
+
+
+def test_pulse_buckets_by_week(dated):
+    p = S.pulse(dated, S.Query(data_only=True), today=TODAY)
+    weeks = {w["start"]: w["opened"] for w in p["weeks"]}
+    assert len(p["weeks"]) == 16
+    assert p["weeks"][0]["start"] == "2026-05-25"
+    assert p["weeks"][-1]["start"] == "2026-09-07"
+    assert weeks["2026-08-31"] == 2
+    assert weeks["2026-08-24"] == 1
+    # The May role predates the chart. It is still in the index and still
+    # counted by the resting page, which is why a full brush applies no window.
+    assert sum(weeks.values()) == 3
+    assert S.search(dated, S.Query(data_only=True)).total == 4
+
+
+def test_pulse_counts_closures_and_says_when_it_started_watching(dated):
+    """`closed_at` is when *this* index noticed a role gone, so it cannot
+    predate the first sweep. The page needs that date to mark the weeks it has
+    no reading for, rather than drawing them as zero."""
+    dated.execute("UPDATE jobs SET closed_at='2026-09-05' WHERE external_id='3'")
+    dated.commit()
+    p = S.pulse(dated, S.Query(data_only=True), today=TODAY)
+    closed = {w["start"]: w["closed"] for w in p["weeks"]}
+    assert closed["2026-08-31"] == 1
+    assert p["closures_since"] == _day_of_first_run(dated)
+    # A closed role leaves the openings series alone: it opened when it opened.
+    assert {w["start"]: w["opened"] for w in p["weeks"]}["2026-08-24"] == 1
+
+
+def _day_of_first_run(conn):
+    return str(conn.execute("SELECT min(fetched_at) FROM board_runs").fetchone()[0])[:10]
+
+
+def test_filters_can_speak_postgres_placeholders():
+    """The export runs `_filters` against whichever backend holds the index, and
+    a single missed `?` is a syntax error there. Checked without a server
+    because there is not always one to check against."""
+    where, _ = S._filters(S.Query(data_only=True, city="Sydney", remote="hybrid",
+                                  since="2026-08-31", until="2026-09-07",
+                                  vendor="greenhouse", company="Acme", days=7),
+                          ph="%s")
+    clause = " ".join(where)
+    assert "?" not in clause, "a placeholder was left in SQLite dialect"
+    assert clause.count("%s") == S._filters(
+        S.Query(data_only=True, city="Sydney", remote="hybrid",
+                since="2026-08-31", until="2026-09-07", vendor="greenhouse",
+                company="Acme", days=7))[1].__len__()

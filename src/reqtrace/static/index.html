@@ -5,270 +5,313 @@
 <meta name="description" content="Open data, analytics and machine learning roles in Australia, taken straight from employers' own hiring systems.">
 <style>
   :root {
-    /* Warm paper, one green accent, no other hue. The page is a consumer
-       product now: nothing about the pipeline is on screen, so the palette
-       carries content and state only. */
-    --paper:#fbfaf8; --veil:rgba(251,250,248,.86); --card:#fff; --sunk:#f2efe9;
-    --ink:#17150f; --body:#3d3931; --muted:#6f6a61; --faint:#948e84;
-    --line:#eae5dc; --line-2:#ddd7cc;
-    --accent:#2f5d4c; --accent-ink:#274c3f; --accent-tint:#e9f0ec;
-    --shadow:0 1px 2px rgba(30,25,15,.04), 0 8px 24px -14px rgba(30,25,15,.10);
-    --lift:0 2px 5px rgba(30,25,15,.05), 0 16px 36px -16px rgba(30,25,15,.18);
-    /* No webfont: this page also ships as a static export that has to work as
-       a file opened from disk. `ui-serif` is New York on Apple platforms and
-       Georgia everywhere else — both are good enough to carry the wordmark. */
-    --serif:ui-serif,'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
-    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    /* Warm sand ground, one burnt-orange accent and one olive. The dial is the
+       only place two hues meet, because it is the only place two things are
+       being counted. */
+    --ground:#e6dcc8; --card:#f5ead8; --sunk:#ebddc5;
+    --ink:#201e1d;
+    --ink-70:rgba(32,30,29,.7); --ink-55:rgba(32,30,29,.55);
+    --ink-45:rgba(32,30,29,.45); --ink-20:rgba(32,30,29,.2);
+    --ink-12:rgba(32,30,29,.12); --ink-07:rgba(32,30,29,.07);
+    --accent:#c67139; --accent-deep:#b2622d; --accent-ink:#8c491a;
+    --olive:#8fa073; --olive-deep:#7a8a5e; --olive-pale:#ccdbb2;
+    --shadow:0 3px 10px rgba(46,43,37,.16);
+    /* One family, and no webfont: this page also ships as a static export that
+       has to work as a file opened from disk. Figtree when the reader happens
+       to have it, the platform UI face otherwise. */
+    --sans:Figtree,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   }
   * { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; }
-  body { margin:0; background:var(--paper); color:var(--body);
-    font:15px/1.6 var(--sans); -webkit-font-smoothing:antialiased;
-    text-rendering:optimizeLegibility; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font:14px/1.6 var(--sans); -webkit-font-smoothing:antialiased; }
   a { color:inherit; text-decoration:none; }
-  ::selection { background:var(--accent-tint); }
-  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
-  .wrap { max-width:960px; margin:0 auto; padding:0 24px; }
+  ::selection { background:rgba(198,113,57,.25); }
+  :focus-visible { outline:2px solid var(--accent-ink); outline-offset:3px;
+    border-radius:6px; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden;
+    clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+
+  .page { max-width:1000px; margin:0 auto; padding:26px 20px 40px; }
+  .card { background:var(--card); border:1px solid rgba(32,30,29,.1);
+    border-radius:28px; box-shadow:var(--shadow); overflow:hidden; }
 
   /* ---- masthead ---- */
-  .masthead { display:flex; align-items:baseline; gap:14px; padding:26px 0 0; }
-  .mark { font-family:var(--serif); font-size:21px; letter-spacing:-.012em;
-    color:var(--ink); }
-  .mark em { font-style:normal; color:var(--accent); }
-  .masthead .tag { font-size:12.5px; color:var(--faint); }
-  @media (max-width:560px) { .masthead .tag { display:none; } }
+  .top { display:flex; align-items:center; gap:13px; padding:26px 34px 0;
+    flex-wrap:wrap; }
+  .mark { font-size:22px; font-weight:700; letter-spacing:-.03em; line-height:1; }
+  .mark em { font-style:normal; color:var(--accent-deep); }
+  .scope { font-size:12px; color:var(--ink-55); }
+  .swept { margin-left:auto; display:flex; align-items:center; gap:8px;
+    font-size:11.5px; color:var(--ink-55); }
+  .swept i { width:7px; height:7px; border-radius:50%; background:var(--olive-deep); }
+  .swept.cold i { background:#b06a4a; }
 
-  /* ---- hero ---- */
-  .hero { padding:52px 0 30px; }
-  h1 { margin:0; font-family:var(--serif); font-weight:500; color:var(--ink);
-    font-size:clamp(31px,5.2vw,45px); line-height:1.08; letter-spacing:-.022em;
-    max-width:15ch; text-wrap:balance; }
-  .hero p { margin:16px 0 0; max-width:52ch; font-size:16px; color:var(--muted);
-    text-wrap:pretty; }
+  /* ---- search ---- */
+  .find { margin:18px 34px 0; display:flex; align-items:center; gap:12px;
+    height:52px; padding:0 10px 0 19px; background:var(--sunk);
+    border:1px solid rgba(32,30,29,.16); border-radius:999px;
+    transition:border-color .2s, box-shadow .2s; }
+  .find:focus-within { border-color:var(--accent);
+    box-shadow:0 0 0 4px rgba(198,113,57,.13); }
+  .find svg { flex:none; color:var(--accent-ink); }
+  .find input { flex:1; min-width:0; height:100%; border:0; background:transparent;
+    font:inherit; font-size:15.5px; color:var(--ink); outline:none; }
+  .find input::placeholder { color:var(--ink-45); }
+  .find input::-webkit-search-decoration,
+  .find input::-webkit-search-cancel-button { -webkit-appearance:none; }
+  .xq { flex:none; width:30px; height:30px; display:grid; place-items:center;
+    border:0; border-radius:50%; background:rgba(32,30,29,.09); color:var(--ink);
+    cursor:pointer; font-size:15px; line-height:1; opacity:0; pointer-events:none;
+    transition:opacity .2s, background .2s; }
+  .xq:hover { background:var(--ink-20); }
+  .xq.on { opacity:1; pointer-events:auto; }
 
-  /* ---- search + filters ---- */
-  .controls { position:sticky; top:0; z-index:20; padding:14px 0;
-    background:var(--veil); -webkit-backdrop-filter:saturate(1.6) blur(14px);
-    backdrop-filter:saturate(1.6) blur(14px);
-    border-bottom:1px solid transparent; transition:border-color .2s; }
-  .controls.stuck { border-bottom-color:var(--line); }
-  .search { display:flex; align-items:center; gap:12px; height:56px; padding:0 8px 0 17px;
-    background:var(--card); border:1px solid var(--line-2); border-radius:13px;
-    box-shadow:var(--shadow); transition:border-color .18s, box-shadow .18s; }
-  .search:focus-within { border-color:var(--accent);
-    box-shadow:0 0 0 3px var(--accent-tint), var(--lift); }
-  .search svg { flex:none; color:var(--faint); }
-  .search input { flex:1; min-width:0; height:100%; border:0; background:transparent;
-    font:inherit; font-size:16.5px; color:var(--ink); outline:none; }
-  .search input::placeholder { color:var(--faint); }
-  .search input::-webkit-search-decoration,
-  .search input::-webkit-search-cancel-button { -webkit-appearance:none; }
-  .xq { flex:none; width:30px; height:30px; margin-right:6px; display:none;
-    place-items:center; border:0; border-radius:50%; background:var(--sunk);
-    color:var(--muted); cursor:pointer; font-size:15px; line-height:1; }
-  .xq:hover { background:var(--line-2); color:var(--ink); }
-  .xq.on { display:grid; }
+  /* ---- the dial ---- */
+  .dial { padding:20px 34px 0; }
+  .dial[hidden] { display:none; }
+  .dhead { display:flex; align-items:flex-end; gap:16px; margin-bottom:11px;
+    flex-wrap:wrap; }
+  .dhead h2 { margin:0; font-size:16px; font-weight:700; letter-spacing:-.012em; }
+  .dsub { font-size:12px; color:var(--ink-55); margin-top:3px; }
+  .dsub button { border:0; background:none; padding:0 0 0 2px; font:inherit;
+    font-size:12px; color:var(--accent-ink); cursor:pointer; text-decoration:underline;
+    text-underline-offset:2px; }
+  .legend { margin-left:auto; display:flex; gap:15px; font-size:11px;
+    color:var(--ink-55); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend i { width:9px; height:9px; border-radius:2px; }
 
-  .filters { display:flex; align-items:center; gap:9px; margin-top:12px; flex-wrap:wrap; }
-  .seg { display:inline-flex; gap:2px; padding:3px; background:var(--sunk);
-    border-radius:999px; }
-  .seg button { border:0; background:transparent; border-radius:999px; cursor:pointer;
-    font:inherit; font-size:13.5px; font-weight:500; color:var(--muted); padding:6px 15px;
-    transition:color .15s, background .15s; }
-  .seg button:hover { color:var(--ink); }
-  .seg button[aria-pressed=true] { background:var(--card); color:var(--ink);
-    box-shadow:0 1px 2px rgba(30,25,15,.08); }
-  .pill { display:inline-flex; align-items:center; height:34px; padding:0 14px;
-    border:1px solid var(--line-2); border-radius:999px; background:var(--card);
-    color:var(--body); font:inherit; font-size:13.5px; cursor:pointer;
-    transition:border-color .15s, background .15s, color .15s; }
-  .pill:hover { border-color:var(--faint); }
-  .pill[aria-pressed=true] { background:var(--ink); border-color:var(--ink); color:#fff; }
-  select.pill { appearance:none; -webkit-appearance:none; padding-right:31px;
-    background-repeat:no-repeat; background-position:right 12px center;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236f6a61' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
-  select.pill.set { border-color:var(--accent); background-color:var(--accent-tint);
-    color:var(--accent-ink); }
-  .reset { margin-left:auto; border:0; background:none; cursor:pointer; font:inherit;
-    font-size:13px; color:var(--muted); text-decoration:underline;
-    text-underline-offset:3px; text-decoration-color:var(--line-2); padding:6px 2px; }
-  .reset:hover { color:var(--ink); }
-  .reset[hidden] { display:none; }
+  .track { position:relative; padding:12px 10px 8px; background:var(--sunk);
+    border-radius:24px; cursor:ew-resize; touch-action:none; user-select:none;
+    -webkit-user-select:none; }
+  .bars { display:flex; gap:6px; align-items:stretch; }
+  .wk { flex:1; display:flex; flex-direction:column; min-width:0;
+    transition:opacity .28s ease; }
+  .wk.out { opacity:.3; }
+  .up { height:62px; display:flex; align-items:flex-end; }
+  .up b { display:block; width:100%; border-radius:6px 6px 0 0;
+    background:var(--accent); transition:height .3s cubic-bezier(.2,.9,.2,1); }
+  .mid { height:1px; background:var(--ink-20); }
+  .dn { height:34px; }
+  .dn b { display:block; width:100%; border-radius:0 0 6px 6px;
+    background:var(--olive); transition:height .3s cubic-bezier(.2,.9,.2,1); }
+  /* A week that ended before the first sweep cannot have "no closures" — it has
+     no reading at all, and a zero-height bar would claim otherwise. Hatched,
+     because the absence of a measurement is not a measurement of zero. */
+  .dn.blind { border-radius:0 0 6px 6px; background:repeating-linear-gradient(
+    45deg, transparent 0 3px, rgba(32,30,29,.11) 3px 5px); }
+  .tick { text-align:center; font-size:9.5px; color:var(--ink-45); margin-top:6px;
+    font-variant-numeric:tabular-nums; height:13px; }
+  .brush { position:absolute; top:8px; bottom:26px; border:2px solid var(--accent);
+    border-radius:18px; background:rgba(198,113,57,.1); pointer-events:none;
+    transition:left .18s cubic-bezier(.2,.9,.2,1), width .18s cubic-bezier(.2,.9,.2,1); }
+  .brush i { position:absolute; top:50%; margin-top:-13px; width:6px; height:26px;
+    border-radius:999px; background:var(--accent); }
+  .brush i.l { left:-4px; } .brush i.r { right:-4px; }
+  .blindnote { font-size:11px; color:var(--ink-45); margin:8px 2px 0; }
+
+  /* ---- body grid ---- */
+  .body { display:grid; grid-template-columns:236px minmax(0,1fr);
+    margin-top:24px; border-top:1px solid rgba(32,30,29,.14); }
+  .rail { padding:24px 24px 30px 34px; border-right:1px solid rgba(32,30,29,.1); }
+  .odo { font-size:42px; font-weight:700; letter-spacing:-.035em; line-height:.92;
+    font-variant-numeric:tabular-nums; display:inline-flex; }
+  .odo span { display:inline-block; width:.58em; height:1em; overflow:hidden; }
+  .odo span u { display:block; text-decoration:none;
+    transition:transform .5s cubic-bezier(.2,.9,.2,1); }
+  .odo span u i { display:block; height:1em; line-height:1em; font-style:normal; }
+  .odolabel { font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-55); margin-top:9px; }
+  .rule { height:1px; background:var(--ink-12); margin:22px 0; }
+  .railhead { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-45); margin-bottom:11px; }
+  .railhead.next { margin:22px 0 10px; }
+  .cities { display:flex; flex-direction:column; gap:3px; }
+  .cities button { display:flex; align-items:center; gap:10px; padding:6px 11px;
+    border:0; border-radius:999px; background:transparent; color:var(--ink);
+    font:inherit; font-size:13px; cursor:pointer; text-align:left;
+    transition:background .2s, color .2s; }
+  .cities button:hover { background:rgba(32,30,29,.06); }
+  .cities button[aria-pressed=true] { background:var(--accent); color:var(--card); }
+  .cities button[aria-pressed=true]:hover { background:var(--accent-deep); }
+  .cities b { flex:1; font-weight:400; }
+  .cities i { height:5px; border-radius:999px; background:var(--olive-pale);
+    transition:width .45s cubic-bezier(.2,.9,.2,1), background .2s; }
+  .cities button[aria-pressed=true] i { background:rgba(245,234,216,.7); }
+  .cities em { font-style:normal; font-size:11px; font-variant-numeric:tabular-nums;
+    opacity:.62; width:26px; text-align:right; }
+  .works { display:flex; gap:6px; flex-wrap:wrap; }
+  .works button { display:inline-flex; align-items:center; height:31px; padding:0 13px;
+    border:1px solid var(--ink-20); border-radius:999px; background:transparent;
+    color:var(--ink); font:inherit; font-size:12.5px; cursor:pointer;
+    transition:background .2s, color .2s, border-color .2s; }
+  .works button:hover { border-color:var(--ink-45); }
+  .works button[aria-pressed=true] { background:var(--accent); border-color:var(--accent);
+    color:var(--card); }
+  .note { margin-top:26px; font-size:11.5px; line-height:1.65; color:var(--ink-55); }
+  .note b { color:var(--ink-70); font-weight:600; }
 
   /* ---- results ---- */
-  main { padding-bottom:56px; }
-  .rhead { display:flex; align-items:center; gap:14px; padding:28px 2px 13px; }
-  .rhead .n { font-size:14px; color:var(--muted); }
-  .rhead .n b { color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
-  .rhead .sort { margin-left:auto; display:flex; align-items:center; gap:7px;
-    font-size:13px; color:var(--faint); }
-  .rhead select { appearance:none; -webkit-appearance:none; border:0; background:none;
-    font:inherit; font-size:13.5px; color:var(--body); cursor:pointer; padding-right:17px;
-    background-repeat:no-repeat; background-position:right center;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236f6a61' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+  .results { padding:16px 34px 30px 26px; min-width:0; }
+  .rows { list-style:none; margin:0; padding:0; }
+  .row { display:grid; grid-template-columns:minmax(0,1fr) 74px 66px; gap:0 14px;
+    align-items:center; overflow:hidden; border-bottom:1px solid var(--ink-07);
+    border-radius:12px; padding-left:10px; max-height:60px;
+    transition:max-height .38s cubic-bezier(.2,.85,.2,1), opacity .28s ease,
+      transform .38s cubic-bezier(.2,.85,.2,1), background .15s; }
+  /* Rows leave by collapsing where they stand rather than by being unmounted:
+     the list narrowing in place is the whole point of the dial. */
+  .row.gone { max-height:0; opacity:0; transform:translateY(-10px);
+    pointer-events:none; border-bottom-color:transparent; }
+  .row:hover { background:rgba(32,30,29,.05); }
+  .row .t { padding:10px 0; min-width:0; }
+  .row h3 { margin:0; font-size:14px; font-weight:600; line-height:1.3;
+    letter-spacing:-.005em; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; }
+  .row .m { font-size:12px; line-height:1.35; color:var(--ink-55); margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row .m b { font-weight:400; font-variant-numeric:tabular-nums;
+    color:var(--ink-70); }
+  .chip { display:inline-flex; font-size:10.5px; padding:2px 9px; border-radius:999px; }
+  .c-hybrid { background:#e1eecc; color:#3d472b; }
+  .c-onsite { background:#eee7db; color:#474238; }
+  .c-remote { background:#ffe1d0; color:#643312; }
+  .age { text-align:right; font-size:11.5px; color:var(--ink-45);
+    font-variant-numeric:tabular-nums; }
+  .foot { padding:16px 0 0 10px; font-size:11.5px; color:var(--ink-55); }
+  .foot button { border:0; background:none; padding:0; font:inherit; font-size:11.5px;
+    color:var(--accent-ink); cursor:pointer; text-decoration:underline;
+    text-underline-offset:2px; }
+  .foot button[hidden] { display:none; }
+  .blank { padding:44px 10px; }
+  .blank h3 { margin:0 0 6px; font-size:16px; }
+  .blank p { margin:0 0 14px; font-size:13px; color:var(--ink-55); }
+  .blank button { height:32px; padding:0 15px; border:1px solid var(--ink-20);
+    border-radius:999px; background:transparent; font:inherit; font-size:12.5px;
+    color:var(--ink); cursor:pointer; }
+  .sk { height:56px; border-bottom:1px solid var(--ink-07); display:flex;
+    align-items:center; padding-left:10px; }
+  .sk i { display:block; height:11px; width:38%; border-radius:6px;
+    background:rgba(32,30,29,.09); animation:breathe 1.5s ease-in-out infinite; }
+  .sk:nth-child(2) i { width:52%; } .sk:nth-child(3) i { width:44%; }
+  @keyframes breathe { 0%,100% { opacity:1 } 50% { opacity:.4 } }
 
-  .roles { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
-  .role { display:grid; grid-template-columns:46px minmax(0,1fr) auto; gap:0 16px;
-    align-items:start; padding:18px 20px; background:var(--card);
-    border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow);
-    transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
-  .role:hover { transform:translateY(-1px); box-shadow:var(--lift);
-    border-color:var(--line-2); }
-  @media (prefers-reduced-motion:reduce) { .role { transition:none; }
-    .role:hover { transform:none; } }
-  .mono { width:46px; height:46px; border-radius:12px; display:grid; place-items:center;
-    font-size:14.5px; font-weight:600; letter-spacing:.01em; }
-  /* Six muted tints, picked by a hash of the employer name — the list needs
-     rhythm, and every employer having the same grey square is not it. */
-  .t0 { background:#e7eee8; color:#3f5f4c; } .t1 { background:#f3e8e0; color:#8a5236; }
-  .t2 { background:#f1ecdc; color:#75632f; } .t3 { background:#e6eaef; color:#43566a; }
-  .t4 { background:#ece7f0; color:#584a70; } .t5 { background:#f4e6ea; color:#83405a; }
-  .role h2 { margin:0; font-size:17px; font-weight:600; line-height:1.35;
-    letter-spacing:-.006em; color:var(--ink); }
-  .role:hover h2 { color:var(--accent-ink); }
-  .org { margin-top:4px; font-size:13.5px; color:var(--muted); }
-  .org b { font-weight:500; color:var(--body); }
-  .org i { font-style:normal; color:#c9c1b3; padding:0 6px; }
-  .excerpt { margin:9px 0 0; font-size:13.5px; line-height:1.55; color:var(--faint);
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-    overflow:hidden; }
-  .aside { display:flex; flex-direction:column; align-items:flex-end; gap:5px;
-    text-align:right; padding-top:2px; }
-  .pay { font-size:13.5px; font-weight:600; color:var(--ink);
-    font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .when { font-size:12.5px; color:var(--faint); white-space:nowrap; }
-  .when.fresh { color:var(--accent-ink); font-weight:500; }
-  .cta { margin-top:5px; display:inline-flex; align-items:center; gap:5px;
-    font-size:12.5px; font-weight:500; color:var(--faint); white-space:nowrap;
-    transition:color .16s; }
-  .role:hover .cta { color:var(--accent-ink); }
+  footer { display:flex; gap:8px 20px; flex-wrap:wrap; align-items:baseline;
+    padding:20px 8px 0; font-size:11.5px; color:var(--ink-45); }
+  footer a { color:var(--accent-ink); text-decoration:underline;
+    text-underline-offset:2px; }
+  footer .r { margin-left:auto; }
 
-  .more { display:block; margin:22px auto 0; padding:0 24px; height:42px;
-    border:1px solid var(--line-2); border-radius:999px; background:var(--card);
-    font:inherit; font-size:14px; font-weight:500; color:var(--body); cursor:pointer;
-    box-shadow:var(--shadow); }
-  .more:hover { border-color:var(--faint); color:var(--ink); }
-  .more[hidden] { display:none; }
-
-  .empty { padding:60px 24px; text-align:center; background:var(--card);
-    border:1px solid var(--line); border-radius:14px; }
-  .empty h3 { margin:0; font-family:var(--serif); font-weight:500; font-size:21px;
-    color:var(--ink); }
-  .empty p { margin:8px 0 18px; font-size:14px; color:var(--muted); }
-
-  /* Skeletons: the export loads the whole AU set once, so first paint is a
-     beat behind the page. Better a shape than a blank. */
-  .sk { display:grid; grid-template-columns:46px minmax(0,1fr); gap:0 16px;
-    padding:18px 20px; background:var(--card); border:1px solid var(--line);
-    border-radius:14px; }
-  .sk span, .sk i { display:block; border-radius:8px; background:var(--sunk);
-    animation:pulse 1.5s ease-in-out infinite; }
-  .sk span { width:46px; height:46px; border-radius:12px; }
-  .sk i { height:11px; margin-bottom:9px; }
-  .sk i:nth-child(1) { width:44%; height:14px; }
-  .sk i:nth-child(2) { width:28%; }
-  .sk i:nth-child(3) { width:82%; margin-bottom:0; }
-  .sk:nth-child(2) i:nth-child(1) { width:56%; }
-  .sk:nth-child(3) i:nth-child(1) { width:36%; }
-  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.45 } }
-  @media (prefers-reduced-motion:reduce) { .sk span, .sk i { animation:none } }
-
-  footer { border-top:1px solid var(--line); padding:26px 0 48px; }
-  footer .row { display:flex; gap:10px 22px; flex-wrap:wrap; align-items:baseline;
-    font-size:12.5px; color:var(--faint); }
-  footer .row .m { font-family:var(--serif); font-size:15px; color:var(--muted); }
-  footer .row .r { margin-left:auto; }
-
-  @media (max-width:660px) {
-    .hero { padding:40px 0 24px; }
-    .role { grid-template-columns:40px minmax(0,1fr); gap:0 14px; }
-    .mono { width:40px; height:40px; border-radius:11px; font-size:13px; }
-    .aside { grid-column:2; flex-direction:row; align-items:center; text-align:left;
-      gap:12px; margin-top:11px; flex-wrap:wrap; }
-    .cta { margin-top:0; margin-left:auto; }
-    .filters { gap:8px; }
+  @media (max-width:820px) {
+    .page { padding:14px 12px 28px; }
+    .card { border-radius:22px; }
+    .top, .dial { padding-left:20px; padding-right:20px; }
+    .find { margin-left:20px; margin-right:20px; }
+    .body { grid-template-columns:minmax(0,1fr); }
+    .rail { border-right:0; border-bottom:1px solid rgba(32,30,29,.1);
+      padding:22px 20px 24px; }
+    .results { padding:14px 20px 26px; }
+    .row { grid-template-columns:minmax(0,1fr) 66px; }
+    .row .age { display:none; }
+    .up { height:48px; } .dn { height:26px; } .dn.blind { height:24px; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    * { transition-duration:.01ms !important; animation-duration:.01ms !important; }
   }
 </style>
 
-<div class="wrap">
-  <header class="masthead">
-    <a class="mark" href="./">Req<em>Trace</em></a>
-    <span class="tag">Australian data &amp; analytics roles</span>
-  </header>
+<div class="page">
+  <div class="card">
+    <header class="top">
+      <a class="mark" href="./">Req<em>Trace</em></a>
+      <span class="scope" id="scope">data &amp; AI &middot; Australia</span>
+      <span class="swept" id="swept"><i></i><span>reading the index&hellip;</span></span>
+    </header>
 
-  <section class="hero">
-    <h1>Data roles in Australia, straight from the source.</h1>
-    <p>Every opening here comes from the employer&rsquo;s own hiring system — one
-      listing per role, no reposts, and Apply takes you to the employer. Filled
-      roles drop off.</p>
-  </section>
-</div>
-
-<div class="controls" id="controls">
-  <div class="wrap">
-    <div class="search">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"></circle><path d="m21 21-4.3-4.3"></path></svg>
+    <div class="find">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7.5"></circle><path d="m21 21-4.3-4.3"></path></svg>
       <input type="search" id="q" autocomplete="off" spellcheck="false"
         placeholder="Search roles, employers or skills" aria-label="Search roles">
       <button class="xq" id="xq" type="button" aria-label="Clear search">&times;</button>
     </div>
-    <div class="filters">
-      <div class="seg" role="group" aria-label="Role type">
-        <button type="button" id="cat-data" aria-pressed="true">Data &amp; AI</button>
-        <button type="button" id="cat-all" aria-pressed="false">All roles</button>
+
+    <section class="dial" id="dial" hidden>
+      <div class="dhead">
+        <div>
+          <h2>Drag across the weeks</h2>
+          <div class="dsub"><span id="dsub"></span><button type="button" id="allweeks" hidden>all weeks</button></div>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>opened</span>
+          <span><i style="background:var(--olive)"></i>closed</span>
+        </div>
       </div>
-      <select class="pill" id="city" aria-label="Location"><option value="">Anywhere in Australia</option></select>
-      <select class="pill" id="work" aria-label="Work type">
-        <option value="">Any work type</option>
-        <option value="remote">Remote</option>
-        <option value="hybrid">Hybrid</option>
-        <option value="onsite">On-site</option>
-      </select>
-      <button class="pill" type="button" id="fresh" aria-pressed="false">New this week</button>
-      <button class="reset" type="button" id="reset" hidden>Clear filters</button>
+      <div class="track" id="track" tabindex="0" role="group"
+        aria-label="Week window. Arrow keys move it, shift with arrows resizes it, escape clears it.">
+        <div class="bars" id="bars"></div>
+        <div class="brush" id="brush"><i class="l"></i><i class="r"></i></div>
+      </div>
+      <p class="blindnote" id="blindnote"></p>
+    </section>
+
+    <div class="body">
+      <aside class="rail">
+        <div class="odo" id="odo" aria-hidden="true"></div>
+        <div class="odolabel" id="odolabel">roles in the index</div>
+        <div class="sr" id="live" aria-live="polite" role="status"></div>
+
+        <div class="rule"></div>
+
+        <div class="railhead">Where</div>
+        <div class="cities" id="cities"></div>
+
+        <div class="railhead next">How</div>
+        <div class="works" id="works">
+          <button type="button" data-work="remote" aria-pressed="false">Remote</button>
+          <button type="button" data-work="hybrid" aria-pressed="false">Hybrid</button>
+          <button type="button" data-work="onsite" aria-pressed="false">On-site</button>
+        </div>
+
+        <p class="note" id="worknote">Work type is the employer&rsquo;s own
+          <b>workplaceType</b> field, not a recruiter&rsquo;s tickbox.</p>
+      </aside>
+
+      <div class="results">
+        <ol class="rows" id="rows">
+          <li class="sk"><i></i></li><li class="sk"><i></i></li><li class="sk"><i></i></li>
+        </ol>
+        <p class="foot" id="foot"></p>
+      </div>
     </div>
   </div>
+
+  <footer>
+    <span>Read from employers&rsquo; own hiring systems. Apply links go to the employer.</span>
+    <span class="r" id="scopeout"></span>
+  </footer>
 </div>
-
-<main class="wrap">
-  <div class="rhead">
-    <div class="n" id="count" aria-live="polite" role="status">&nbsp;</div>
-    <label class="sort">Sort
-      <select id="sort" aria-label="Sort roles">
-        <option value="newest">Newest</option>
-        <option value="relevance">Best match</option>
-      </select>
-    </label>
-  </div>
-
-  <ol class="roles" id="results">
-    <li class="sk"><span></span><div><i></i><i></i><i></i></div></li>
-    <li class="sk"><span></span><div><i></i><i></i><i></i></div></li>
-    <li class="sk"><span></span><div><i></i><i></i><i></i></div></li>
-  </ol>
-  <button class="more" id="more" type="button" hidden>Show more roles</button>
-</main>
-
-<footer>
-  <div class="wrap row">
-    <span class="m">ReqTrace</span>
-    <span>Listings are read from employers&rsquo; hiring systems and refreshed daily.</span>
-    <span class="r">Apply links go to the employer.</span>
-  </div>
-</footer>
 
 <script>
 const $ = s => document.querySelector(s);
 
 // One page, two backends. Served by `reqtrace.web` it queries /api/search
 // against FTS5; served as a static export (or opened as a file) it loads the
-// whole AU set once and filters in the browser. 3.3k rows is small enough that
+// whole AU set once and filters in the browser. 3.4k rows is small enough that
 // a search library would be ceremony — and it is why the export is AU-only:
 // the full 51k index is 28MB.
 const STATIC = { on:false, jobs:[], data:[], exclude:[] };
 const PAGE = 50;
-const state = { q:'', cat:'data', city:'', work:'', fresh:false, sort:'newest',
-                offset:0 };
+const WEEKS = 16;
+
+// `a`/`b` are bar indexes into PULSE.weeks, 0 oldest. A full span means no date
+// filter at all rather than "the last sixteen weeks": the index holds roles
+// older than the chart is drawn to show, and quietly dropping them would make
+// the resting count a lie.
+const state = { q:'', cat:'data', city:'', work:'', a:0, b:WEEKS - 1,
+                sort:'', offset:0 };
+let PULSE = null;              // { weeks:[{start,opened,closed}], closures_since }
+let total = 0;
 
 /* ---------- url state: a search is a link ---------- */
 
@@ -278,8 +321,17 @@ function readURL() {
   state.cat = u.get('roles') === 'all' ? 'all' : 'data';
   state.city = u.get('city') || '';
   state.work = ['remote','hybrid','onsite'].includes(u.get('work')) ? u.get('work') : '';
-  state.fresh = u.get('new') === '1';
-  state.sort = u.get('sort') === 'relevance' ? 'relevance' : 'newest';
+  // Old links still mean what they meant: `new=1` was "posted this week", which
+  // is the last bar of the dial.
+  if (u.get('new') === '1') { state.a = WEEKS - 1; state.b = WEEKS - 1; }
+  // No sort control on the page any more, but a shared link that named one
+  // should still open the way it was shared.
+  state.sort = u.get('sort') === 'relevance' ? 'relevance' : '';
+  const w = (u.get('w') || '').match(/^(\d+)-(\d+)$/);
+  if (w) {
+    state.a = Math.min(Math.max(+w[1], 0), WEEKS - 1);
+    state.b = Math.min(Math.max(+w[2], 0), WEEKS - 1);
+  }
 }
 
 function writeURL() {
@@ -288,10 +340,25 @@ function writeURL() {
   if (state.cat === 'all') u.set('roles', 'all');
   if (state.city) u.set('city', state.city);
   if (state.work) u.set('work', state.work);
-  if (state.fresh) u.set('new', '1');
-  if (state.sort !== 'newest') u.set('sort', state.sort);
+  if (!whole()) u.set('w', lo() + '-' + hi());
   const qs = u.toString();
   history.replaceState(null, '', qs ? '?' + qs : location.pathname);
+}
+
+const lo = () => Math.min(state.a, state.b);
+const hi = () => Math.max(state.a, state.b);
+const whole = () => lo() === 0 && hi() === WEEKS - 1;
+const dirty = () => !!(state.q || state.city || state.work || !whole());
+
+// The window is a pair of absolute dates, not an age. The export is read for
+// days after it is built, and "sixteen weeks ago" counted from the reader's
+// clock would slide off the bars it was drawn against.
+function window_() {
+  if (!PULSE || whole()) return null;
+  const from = PULSE.weeks[lo()].start;
+  const end = new Date(PULSE.weeks[hi()].start + 'T00:00:00Z');
+  end.setUTCDate(end.getUTCDate() + 7);
+  return { since:from, until:end.toISOString().slice(0, 10) };
 }
 
 // The public URL keeps friendly names; the query layer keeps its own.
@@ -301,14 +368,14 @@ function params(offset = 0) {
   if (state.cat === 'data') p.set('data_only', '1');
   if (state.city) p.set('city', state.city);
   if (state.work) p.set('remote', state.work);
-  if (state.fresh) p.set('days', '7');
-  p.set('sort', state.sort);
+  const w = window_();
+  if (w) { p.set('since', w.since); p.set('until', w.until); }
+  // No sort control on the page: newest is what a hunter wants, except while
+  // they are typing, when best-match is.
+  p.set('sort', state.sort || (state.q ? 'relevance' : 'newest'));
   p.set('offset', offset);
   return p;
 }
-
-const dirty = () => !!(state.q || state.city || state.work || state.fresh
-  || state.cat !== 'data');
 
 /* ---------- formatting ---------- */
 
@@ -317,7 +384,7 @@ const esc = s => (s ?? '').toString().replace(/[<>&"]/g,
 const n = v => (v ?? 0).toLocaleString();
 
 // The employer's own publish date, not first_seen_at — the latter only records
-// when this index noticed a role, which would read "today" for every row.
+// when this index noticed a role, which would read "this week" for every row.
 const daysAgo = j => {
   const iso = j.posted_at || j.first_seen_at;
   if (!iso) return null;
@@ -325,67 +392,46 @@ const daysAgo = j => {
   return Number.isFinite(d) ? Math.max(d, 0) : null;
 };
 
-const ago = d => d === null ? '' : d === 0 ? 'Today' : d === 1 ? 'Yesterday'
-  : d < 30 ? d + ' days ago' : d < 60 ? 'Last month'
-  : d < 365 ? Math.round(d / 30) + ' months ago' : 'Over a year ago';
+// Weeks, because the dial counts in weeks and two units on one row would make
+// the reader convert between them.
+const age = d => {
+  if (d === null) return '';
+  const w = Math.floor(d / 7);
+  return w === 0 ? 'this week' : w === 1 ? '1 wk' : w < 53 ? w + ' wks' : '1 yr+';
+};
 
 const money = j => {
   if (!j.salary_min) return null;
   const f = v => v >= 1000 ? Math.round(v / 1000) + 'k' : v;
   const cur = (j.salary_currency || '').replace('AUD', 'A$').replace('USD', 'US$');
-  const range = j.salary_max && j.salary_max !== j.salary_min
-    ? f(j.salary_min) + '–' + f(j.salary_max) : f(j.salary_min);
-  return cur + range + (j.salary_period ? '/' + j.salary_period : '');
+  return cur + (j.salary_max && j.salary_max !== j.salary_min
+    ? f(j.salary_min) + '–' + f(j.salary_max) : f(j.salary_min));
 };
 
 const WORK = { remote:'Remote', hybrid:'Hybrid', onsite:'On-site' };
-
-// SmartRecruiters puts its own field label at the top of every description, so
-// a third of the list opens with the words "Job Description". Stripped for
-// display only — the stored text is the vendor's, and normalising it belongs in
-// the ingest path if it ever matters to more than the preview.
-const preview = t => (t || '').replace(/^\s*Job Description[:\s-]*/i, '').trim();
 
 // Vendors hand back city names in whatever case the recruiter typed, so the
 // index holds "MOUNT WAVERLEY" next to "Sydney". Fix it for display only.
 const place = s => !s ? '' : s === s.toUpperCase() && s.length > 3
   ? s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : s;
 
-const initials = s => {
-  const w = (s || '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
-  if (!w.length) return '··';
-  return (w.length > 1 ? w[0][0] + w[1][0] : w[0].slice(0, 2)).toUpperCase();
-};
+const key = j => `${j.ats_vendor}/${j.board_token}/${j.external_id}`;
 
-const tint = s => {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h % 6;
-};
-
-function card(j) {
-  const d = daysAgo(j);
-  const co = j.company || '';
+function rowHTML(j) {
   const where = place(j.location_city) || place(j.location_raw) || 'Australia';
   const sal = money(j);
-  const dot = '<i>&middot;</i>';
-  return `<li><a class="role" href="${esc(j.apply_url)}" target="_blank" rel="noopener">
-    <span class="mono t${tint(co)}" aria-hidden="true">${esc(initials(co))}</span>
-    <div>
-      <h2>${esc(j.title)}</h2>
-      <div class="org"><b>${esc(co)}</b>${dot}${esc(where)}${
-        WORK[j.remote_type] ? dot + WORK[j.remote_type] : ''}</div>
-      ${j.snippet ? `<p class="excerpt">${esc(preview(j.snippet))}${
-        j.snippet.length >= 319 ? '…' : ''}</p>` : ''}
+  // Salary is rendered where it exists and is never a filter: 57 of 3,341 open
+  // AU roles carry a band, so a control for it would hide 98% of the index.
+  return `<a class="row" href="${esc(j.apply_url)}" target="_blank" rel="noopener">
+    <div class="t">
+      <h3>${esc(j.title)}</h3>
+      <div class="m">${esc(j.company || '')} &middot; ${esc(where)}${
+        sal ? ' &middot; <b>' + esc(sal) + '</b>' : ''}</div>
     </div>
-    <div class="aside">
-      ${sal ? `<span class="pay">${esc(sal)}</span>` : ''}
-      <span class="when${d !== null && d <= 7 ? ' fresh' : ''}">${esc(ago(d))}</span>
-      <span class="cta">Apply
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg>
-      </span>
-    </div>
-  </a></li>`;
+    <div>${WORK[j.remote_type]
+      ? `<span class="chip c-${j.remote_type}">${WORK[j.remote_type]}</span>` : ''}</div>
+    <div class="age">${esc(age(daysAgo(j)))}</div>
+  </a>`;
 }
 
 /* ---------- the browser-side backend ---------- */
@@ -401,6 +447,9 @@ async function detectStatic() {
     STATIC.data = m.data_terms; STATIC.exclude = m.analyst_exclude;
     STATIC.jobs = await (await fetch('data/jobs.json')).json();
     STATIC.on = true;
+    // An export built before the dial existed has no pulse; the page drops the
+    // chart rather than throwing on the way to drawing it.
+    if (m.pulse && m.pulse.weeks) PULSE = m.pulse;
     return true;
   } catch { return false; }
 }
@@ -412,19 +461,24 @@ const isDataRole = t => {
   return s.includes('analyst') && !STATIC.exclude.some(x => s.includes(x));
 };
 
+const posted = j => (j.posted_at || j.first_seen_at || '').toString()
+  .replace(' ', 'T').slice(0, 10);
+
 function searchLocal(p) {
   const q = (p.get('q') || '').toLowerCase().trim();
   // FTS5 prefix-matches each term; substring matching here is slightly looser.
   const terms = q ? q.split(/\s+/).filter(Boolean) : [];
-  const cutoff = p.get('days') ? Date.now() - (+p.get('days')) * 864e5 : null;
+  const since = p.get('since'), until = p.get('until');
 
   const rows = STATIC.jobs.filter(j => {
     if (p.get('data_only') && !isDataRole(j.title)) return false;
     if (p.get('remote') && j.remote_type !== p.get('remote')) return false;
     if (p.get('city') && j.location_city !== p.get('city')) return false;
-    if (cutoff !== null) {
-      const d = new Date((j.posted_at || j.first_seen_at || '').replace(' ', 'T'));
-      if (!(d >= cutoff)) return false;
+    // String comparison on YYYY-MM-DD, the same shape the SQL uses, so both
+    // backends put a role in the same week.
+    if (since || until) {
+      const d = posted(j);
+      if (!d || (since && d < since) || (until && d >= until)) return false;
     }
     if (terms.length) {
       const hay = `${j.title} ${j.company} ${j.snippet || ''}`.toLowerCase();
@@ -433,8 +487,7 @@ function searchLocal(p) {
     return true;
   });
 
-  const when = j => new Date((j.posted_at || j.first_seen_at || 0)
-    .toString().replace(' ', 'T')).getTime() || 0;
+  const when = j => new Date(posted(j)).getTime() || 0;
   if (p.get('sort') === 'relevance' && terms.length) {
     // The server ranks with FTS5 bm25. Approximated here as "how many query
     // terms hit the title", which is the part of bm25 a reader would notice.
@@ -446,24 +499,212 @@ function searchLocal(p) {
 
   const off = +p.get('offset') || 0;
   return { total:rows.length, results:rows.slice(off, off + PAGE),
-           facets:off ? null : { cities:localCities() } };
+           facets:off ? null : localFacets() };
 }
 
-function localCities() {
-  const c = new Map();
-  for (const j of STATIC.jobs) if (j.location_city)
-    c.set(j.location_city, (c.get(j.location_city) || 0) + 1);
-  return [...c].sort((a, b) => b[1] - a[1]).slice(0, 12)
-    .map(([k, v]) => ({ key:k, n:v }));
+// Counted over the page's scope, not the current filters: the rail is a map of
+// where the roles are, and a chosen city that zeroed every other city would
+// stop being a map the moment it became useful.
+function localFacets() {
+  const scope = STATIC.jobs.filter(j => state.cat !== 'data' || isDataRole(j.title));
+  const tally = (get) => {
+    const c = new Map();
+    for (const j of scope) { const v = get(j); if (v) c.set(v, (c.get(v) || 0) + 1); }
+    return [...c].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ key:k, n:v }));
+  };
+  return { cities:tally(j => j.location_city).slice(0, 30),
+           remote:tally(j => j.remote_type), scope:scope.length };
+}
+
+/* ---------- the dial ---------- */
+
+const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const stamp = iso => {
+  const d = new Date(iso + 'T00:00:00Z');
+  return d.getUTCDate() + ' ' + MONTH[d.getUTCMonth()];
+};
+
+function drawDial() {
+  if (!PULSE) return;
+  $('#dial').hidden = false;
+  const w = PULSE.weeks;
+  const maxUp = Math.max(1, ...w.map(x => x.opened));
+  const maxDn = Math.max(1, ...w.map(x => x.closed));
+  // A week that ended before the first sweep has no closure reading at all.
+  // Drawing it as a zero-height bar would say "nothing closed", which is a
+  // claim the index is not in a position to make.
+  const since = PULSE.closures_since || '9999-12-31';
+  // Compared on the week's *end*: the week the index booted in is partly
+  // observed, and hiding it would throw away closures that were really seen.
+  const ends = iso => {
+    const d = new Date(iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 7);
+    return d.toISOString().slice(0, 10);
+  };
+
+  $('#bars').innerHTML = w.map((x, i) => {
+    const blind = ends(x.start) <= since;
+    return `<div class="wk" data-i="${i}" title="${stamp(x.start)} — ${x.opened} opened${
+      blind ? ', closures not yet watched' : ', ' + x.closed + ' closed'}">
+      <span class="up"><b style="height:${Math.round(x.opened / maxUp * 62)}px"></b></span>
+      <span class="mid"></span>
+      <span class="dn${blind ? ' blind' : ''}">${blind ? ''
+        : `<b style="height:${Math.round(x.closed / maxDn * 34)}px"></b>`}</span>
+      <span class="tick">${i % 4 === 0 ? stamp(x.start) : ''}</span>
+    </div>`;
+  }).join('');
+
+  const blind = w.filter(x => ends(x.start) <= since).length;
+  $('#blindnote').textContent = blind
+    ? `Closures counted from ${stamp(since)}, when the index started watching. `
+      + `The ${blind} earlier week${blind === 1 ? '' : 's'} show openings only.`
+    : '';
+  paintDial();
+}
+
+function paintDial() {
+  if (!PULSE) return;
+  const a = lo(), b = hi(), span = b - a + 1;
+  for (const el of document.querySelectorAll('.wk'))
+    el.classList.toggle('out', !whole() && (+el.dataset.i < a || +el.dataset.i > b));
+  // Percentages of the padded inner track, matching weekAt() exactly so the
+  // brush lands where the pointer was released.
+  $('#brush').style.left = `calc(10px + ${a / WEEKS} * (100% - 20px))`;
+  $('#brush').style.width = `calc(${span / WEEKS} * (100% - 20px))`;
+
+  const from = PULSE.weeks[a].start, to = PULSE.weeks[b].start;
+  $('#dsub').textContent = whole()
+    ? 'Every open role in the index, however old. Drag to narrow to a span of weeks.'
+    : `Posted ${stamp(from)}${span === 1 ? '' : ' – ' + stamp(to)} — ${span} week${
+        span === 1 ? '' : 's'}.`;
+  $('#allweeks').hidden = whole();
+}
+
+function weekAt(clientX) {
+  const r = $('#track').getBoundingClientRect();
+  const inner = Math.max(r.width - 20, 1);
+  return Math.min(WEEKS - 1,
+    Math.max(0, Math.floor((clientX - r.left - 10) / (inner / WEEKS))));
+}
+
+let dragging = false;
+
+$('#track').onpointerdown = e => {
+  if (!PULSE) return;
+  $('#track').setPointerCapture?.(e.pointerId);
+  dragging = true;
+  state.a = state.b = weekAt(e.clientX);
+  paintDial();
+};
+$('#track').onpointermove = e => {
+  if (!dragging) return;
+  const w = weekAt(e.clientX);
+  if (w === state.b) return;
+  state.b = w;
+  paintDial();
+};
+const endDrag = () => { if (dragging) { dragging = false; apply(); } };
+$('#track').onpointerup = endDrag;
+$('#track').onpointercancel = endDrag;
+
+// The brush is two handles, which no single ARIA control models well. Arrows
+// move the window, shift-arrows resize it, escape clears it — so the dial is
+// reachable without a pointer even though it is not a slider.
+$('#track').onkeydown = e => {
+  if (!PULSE) return;
+  const step = { ArrowLeft:-1, ArrowRight:1 }[e.key];
+  if (e.key === 'Escape') { state.a = 0; state.b = WEEKS - 1; }
+  else if (step && whole()) {
+    // From the resting full span there is nowhere to move to, so the first
+    // arrow press starts a window at the most recent week instead of doing
+    // nothing and reading as a dead control.
+    state.a = state.b = WEEKS - 1;
+  } else if (step) {
+    const a = lo(), b = hi();
+    if (e.shiftKey) { state.a = a; state.b = Math.min(WEEKS - 1, Math.max(a, b + step)); }
+    else if (a + step >= 0 && b + step <= WEEKS - 1) { state.a = a + step; state.b = b + step; }
+    else return;
+  } else return;
+  e.preventDefault();
+  paintDial();
+  apply();
+};
+
+$('#allweeks').onclick = () => { state.a = 0; state.b = WEEKS - 1; paintDial(); apply(); };
+
+/* ---------- the odometer ---------- */
+
+const TEN = '<u><i>0</i><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i><i>9</i></u>';
+
+function odometer(v) {
+  const s = String(v), el = $('#odo');
+  if (el.children.length !== s.length)
+    el.innerHTML = s.split('').map(() => `<span>${TEN}</span>`).join('');
+  [...s].forEach((ch, i) =>
+    el.children[i].firstElementChild.style.transform = `translateY(-${+ch}em)`);
+}
+
+/* ---------- rows, which narrow in place ---------- */
+
+const live = new Map();        // key -> <li>, everything currently mounted
+
+function paintRows(jobs, append) {
+  const list = $('#rows');
+  if (!append) list.querySelectorAll('.sk').forEach(el => el.remove());
+  const next = new Set(jobs.map(key));
+
+  if (!append) {
+    for (const [k, el] of live) {
+      if (next.has(k)) continue;
+      live.delete(k);
+      const row = el.firstElementChild;
+      row.classList.add('gone');
+      // Belt and braces: transitionend does not fire if the element is never
+      // laid out (a background tab), and a leaked ghost would push the list down.
+      // Keyed on max-height: opacity finishes first, and dropping the node
+      // then would snap the row away mid-collapse.
+      row.addEventListener('transitionend', e => {
+        if (e.propertyName === 'max-height') el.remove();
+      });
+      setTimeout(() => el.remove(), 700);
+    }
+  }
+
+  const fresh = [];
+  for (const j of jobs) {
+    const k = key(j);
+    let el = live.get(k);
+    if (!el) {
+      el = document.createElement('li');
+      el.innerHTML = rowHTML(j);
+      el.firstElementChild.classList.add('gone');
+      live.set(k, el);
+      fresh.push(el);
+      list.append(el);
+    } else if (!append) {
+      // A new result set can reorder rows that are already on screen — relevance
+      // does — so kept rows are moved into place. Never on the append path:
+      // they are already in order there, and moving a node restarts whatever
+      // transition it is running, including a row still collapsing from the
+      // filter change before this one.
+      list.append(el);
+    }
+  }
+  if (fresh.length) requestAnimationFrame(() =>
+    fresh.forEach(el => el.firstElementChild.classList.remove('gone')));
+}
+
+function blank(head, note, label, fn) {
+  live.clear();
+  $('#rows').innerHTML = `<li class="blank"><h3>${head}</h3><p>${note}</p>
+    <button type="button">${label}</button></li>`;
+  $('#rows button').onclick = fn;
 }
 
 /* ---------- loading ---------- */
 
-let timer, cityDone = false, seq = 0;
-
-const notice = (head, note, id, label) => `<li class="empty">
-  <h3>${head}</h3><p>${note}</p>
-  <button class="pill" type="button" id="${id}">${label}</button></li>`;
+let timer, seq = 0;
+let shown = [];                // every job currently mounted, in order
 
 async function load(more = false) {
   const mine = ++seq;
@@ -474,21 +715,18 @@ async function load(more = false) {
   try {
     d = STATIC.on ? searchLocal(p) : await (await fetch('/api/search?' + p)).json();
     // A 500 from /api/search is `{error: ...}`, which would otherwise reach
-    // `d.results.map` and leave the skeletons up forever. Nothing on this page
-    // reports index health any more, so an unexplained permanent spinner is
-    // the only thing the reader would see.
+    // `d.results.map` and leave the skeletons up forever.
     if (!d || !Array.isArray(d.results)) throw new Error((d && d.error) || 'bad response');
   } catch {
     if (mine !== seq) return;
     // A failed "show more" keeps the rows already on screen and rewinds the
-    // offset, so the button that is still there retries the same page.
+    // offset, so the link that is still there retries the same page.
     if (more) { state.offset = Math.max(state.offset - PAGE, 0); return; }
-    $('#count').textContent = '';
-    $('#results').innerHTML = notice('Roles could not be loaded',
+    $('#live').textContent = 'Roles could not be loaded.';
+    blank('Roles could not be loaded',
       'Something went wrong reaching the index. Check your connection and try again.',
-      'load-retry', 'Try again');
-    $('#load-retry').onclick = () => load();
-    $('#more').hidden = true;
+      'Try again', () => load());
+    $('#foot').innerHTML = '';
     return;
   }
 
@@ -497,21 +735,36 @@ async function load(more = false) {
   // stops matching the box.
   if (mine !== seq) return;
 
-  $('#count').innerHTML = d.total
-    ? `<b>${n(d.total)}</b> open role${d.total === 1 ? '' : 's'}`
-    : 'No roles found';
+  total = d.total;
+  shown = more ? shown.concat(d.results) : d.results;
 
-  const html = d.results.map(card).join('');
-  if (more) {
-    $('#results').insertAdjacentHTML('beforeend', html);
+  if (!shown.length) {
+    blank('Nothing matches',
+      'Widen the dial, clear the search, or drop a filter.', 'Clear everything', reset);
   } else {
-    $('#results').innerHTML = html || notice('Nothing matches that yet',
-      'Try a broader search, or widen the filters.', 'empty-reset', 'Clear filters');
-    if (!html) $('#empty-reset').onclick = reset;
+    paintRows(shown, more);
   }
-  $('#more').hidden = state.offset + d.results.length >= d.total;
-  if (!more) cities(d.facets);
+
+  odometer(total);
+  $('#odolabel').textContent = state.q ? 'matching this search'
+    : whole() ? 'roles in the index' : 'roles in this window';
+  // The odometer reads as loose digits to a screen reader, so the number is
+  // also announced as a sentence.
+  $('#live').textContent = `${n(total)} role${total === 1 ? '' : 's'} ${
+    state.q ? 'match this search' : whole() ? 'in the index' : 'in this window'}.`;
+
+  $('#foot').innerHTML = total
+    ? `${n(Math.min(shown.length, total))} shown of ${n(total)} matching. Every one still
+       open as of the last sweep. <button type="button" id="more"${
+         shown.length >= total ? ' hidden' : ''}>Show ${
+         Math.min(PAGE, total - shown.length)} more</button>`
+    : '';
+  if ($('#more')) $('#more').onclick = () => load(true);
+
+  if (!more && d.facets) rail(d.facets);
 }
+
+/* ---------- the rail ---------- */
 
 // Only the metros: the raw column carries suburbs ("Barangaroo", "North Ryde")
 // and vendor-cased noise, which is not a location picker anyone wants. Values
@@ -519,27 +772,41 @@ async function load(more = false) {
 const METROS = ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Canberra',
                 'Hobart', 'Darwin', 'Gold Coast', 'Newcastle', 'Wollongong'];
 
-function cities(f) {
-  if (cityDone || !f || !f.cities) return;
-  cityDone = true;
+let railDone = false;
+
+function rail(f) {
+  if (railDone || !f || !f.cities) return;
+  railDone = true;
+
   const have = new Map(f.cities.filter(c => c.key)
-    .map(c => [c.key.toLowerCase(), c.key]));
-  const sel = $('#city');
-  for (const m of METROS) {
-    const key = have.get(m.toLowerCase());
-    if (!key) continue;
-    const o = document.createElement('option');
-    o.value = key; o.textContent = m;
-    sel.append(o);
-  }
-  // A shared link can name a city the picker does not list; keep it selectable
-  // rather than silently dropping the filter the results are already using.
-  if (state.city && !sel.querySelector(`option[value="${CSS.escape(state.city)}"]`)) {
-    const o = document.createElement('option');
-    o.value = state.city; o.textContent = place(state.city);
-    sel.append(o);
-  }
-  sel.value = state.city;
+    .map(c => [c.key.toLowerCase(), c]));
+  const rows = METROS.map(m => have.get(m.toLowerCase()))
+    .filter(Boolean).map(c => ({ ...c, label:place(c.key) }));
+  // A shared link can name a city the metro list does not carry; keep it
+  // selectable rather than silently dropping the filter the results are using.
+  if (state.city && !rows.some(c => c.key === state.city))
+    rows.push({ key:state.city, n:0, label:place(state.city) });
+
+  const max = Math.max(1, ...rows.map(c => c.n));
+  $('#cities').innerHTML = rows.map(c =>
+    `<button type="button" data-city="${esc(c.key)}" aria-pressed="false">
+      <b>${esc(c.label)}</b>
+      <i style="width:${Math.max(Math.round(c.n / max * 46), 4)}px"></i>
+      <em>${n(c.n)}</em>
+    </button>`).join('');
+  for (const b of document.querySelectorAll('#cities button'))
+    b.onclick = () => { state.city = state.city === b.dataset.city ? '' : b.dataset.city;
+                        apply(); };
+
+  // How many roles say nothing about work type at all — which is most of them,
+  // and the reason the three chips are not a partition of the index.
+  const typed = (f.remote || []).filter(r => WORK[r.key])
+    .reduce((a, r) => a + r.n, 0);
+  const scope = f.scope || (f.remote || []).reduce((a, r) => a + r.n, 0);
+  $('#worknote').innerHTML = `Work type is the employer&rsquo;s own
+    <b>workplaceType</b> field, not a recruiter&rsquo;s tickbox &mdash; which is why
+    it is missing more often than not. ${n(Math.max(scope - typed, 0))} of these roles
+    publish none.`;
   paint();
 }
 
@@ -548,28 +815,28 @@ function cities(f) {
 function paint() {
   $('#q').value = state.q;
   $('#xq').classList.toggle('on', !!state.q);
-  $('#cat-data').ariaPressed = String(state.cat === 'data');
-  $('#cat-all').ariaPressed = String(state.cat === 'all');
-  $('#city').value = state.city;
-  $('#work').value = state.work;
-  $('#city').classList.toggle('set', !!state.city);
-  $('#work').classList.toggle('set', !!state.work);
-  $('#fresh').ariaPressed = String(state.fresh);
-  $('#sort').value = state.sort;
-  $('#reset').hidden = !dirty();
+  for (const b of document.querySelectorAll('#cities button'))
+    b.ariaPressed = String(b.dataset.city === state.city);
+  for (const b of document.querySelectorAll('#works button'))
+    b.ariaPressed = String(b.dataset.work === state.work);
+  $('#scope').textContent = state.cat === 'all'
+    ? 'every field · Australia' : 'data & AI · Australia';
+  $('#scopeout').innerHTML = state.cat === 'all'
+    ? 'Showing every field. <a href="?">Back to data &amp; AI</a>'
+    : 'This is the data &amp; AI slice. <a href="?roles=all">Every open Australian role</a>';
+  paintDial();
 }
 
 function apply() { paint(); writeURL(); load(); }
 
 function reset() {
-  Object.assign(state, { q:'', cat:'data', city:'', work:'', fresh:false });
+  Object.assign(state, { q:'', city:'', work:'', a:0, b:WEEKS - 1 });
   apply();
 }
 
 $('#q').oninput = e => {
   state.q = e.target.value.trim();
   $('#xq').classList.toggle('on', !!e.target.value);
-  $('#reset').hidden = !dirty();
   clearTimeout(timer);
   timer = setTimeout(() => { writeURL(); load(); }, 200);
 };
@@ -577,14 +844,9 @@ $('#q').onkeydown = e => {
   if (e.key === 'Enter') { clearTimeout(timer); e.target.blur(); apply(); }
 };
 $('#xq').onclick = () => { state.q = ''; clearTimeout(timer); apply(); $('#q').focus(); };
-$('#cat-data').onclick = () => { state.cat = 'data'; apply(); };
-$('#cat-all').onclick = () => { state.cat = 'all'; apply(); };
-$('#city').onchange = e => { state.city = e.target.value; apply(); };
-$('#work').onchange = e => { state.work = e.target.value; apply(); };
-$('#sort').onchange = e => { state.sort = e.target.value; apply(); };
-$('#fresh').onclick = () => { state.fresh = !state.fresh; apply(); };
-$('#reset').onclick = reset;
-$('#more').onclick = () => load(true);
+for (const b of document.querySelectorAll('#works button'))
+  b.onclick = () => { state.work = state.work === b.dataset.work ? '' : b.dataset.work;
+                      apply(); };
 
 document.addEventListener('keydown', e => {
   if (e.key !== '/' || e.metaKey || e.ctrlKey) return;
@@ -593,15 +855,39 @@ document.addEventListener('keydown', e => {
   $('#q').focus();
 });
 
-// The bar only earns its rule once something has scrolled under it.
-const sentinel = document.createElement('div');
-sentinel.style.height = '1px';
-$('#controls').before(sentinel);
-new IntersectionObserver(([e]) =>
-  $('#controls').classList.toggle('stuck', !e.isIntersecting)
-).observe(sentinel);
+/* ---------- freshness ---------- */
+
+// Absolute timestamp in, relative sentence out, computed at read time — so a
+// week-old export says "swept 8 days ago" instead of repeating whatever it was
+// able to claim on the morning it was built.
+function swept(iso) {
+  const el = $('#swept');
+  if (!iso) { el.hidden = true; return; }
+  const h = (Date.now() - new Date(iso.replace(' ', 'T'))) / 36e5;
+  const text = !Number.isFinite(h) ? '' : h < 1.5 ? 'swept just now'
+    : h < 48 ? `swept ${Math.round(h)} hours ago`
+    : `swept ${Math.round(h / 24)} days ago`;
+  if (!text) { el.hidden = true; return; }
+  el.lastElementChild.textContent = text;
+  el.classList.toggle('cold', h > 48);
+}
+
+async function boot() {
+  await detectStatic();
+  if (!STATIC.on) {
+    // The served page reads the same payload the export precomputes.
+    try {
+      const r = await fetch('/api/pulse');
+      const p = await r.json();
+      if (p && p.weeks) PULSE = p;
+    } catch { /* the dial is an enhancement; the list is the page */ }
+  }
+  if (PULSE) { drawDial(); swept(PULSE.last_run); }
+  else { $('#swept').hidden = true; }
+  paint();
+  load();
+}
 
 readURL();
-paint();
-detectStatic().then(() => load());
+boot();
 </script>

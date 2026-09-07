@@ -73,6 +73,14 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json(S.stats(conn))
                 if url.path == "/api/runs":
                     return self._json(R.health(conn))
+                if url.path == "/api/pulse":
+                    # `last_run` ships absolute and the page does the "N hours
+                    # ago" arithmetic, so the served page and a week-old export
+                    # answer the same question the same way.
+                    return self._json({
+                        **S.pulse(conn, S.Query(data_only=True)),
+                        "last_run": R.summary(conn)["last_run"],
+                    })
                 if url.path == "/api/search":
                   try:
                     query = S.Query(
@@ -85,6 +93,8 @@ class Handler(SimpleHTTPRequestHandler):
                         data_only=_bool(qs.get("data_only")),
                         has_salary=_bool(qs.get("has_salary")),
                         days=int(qs.get("days") or 0),
+                        since=qs.get("since", ""),
+                        until=qs.get("until", ""),
                         include_closed=_bool(qs.get("include_closed")),
                         sort=qs.get("sort", "newest"),
                         limit=min(int(qs.get("limit") or 50), 200),

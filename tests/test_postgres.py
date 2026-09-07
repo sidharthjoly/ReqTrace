@@ -18,7 +18,7 @@ import os
 
 import pytest
 
-from reqtrace import runs
+from reqtrace import runs, search
 from reqtrace.models import BoardSnapshot, Job
 from reqtrace.store import Store
 
@@ -27,10 +27,10 @@ pytestmark = pytest.mark.skipif(
     not DSN, reason="set REQTRACE_TEST_DSN to a throwaway Postgres to run these")
 
 
-def job(ext_id, title="Data Scientist", h="h1"):
+def job(ext_id, title="Data Scientist", h="h1", **kw):
     return Job(ats_vendor="greenhouse", board_token="acme", external_id=ext_id,
                title=title, content_hash=h, apply_url=f"https://x/{ext_id}",
-               location_country="AU")
+               location_country="AU", **kw)
 
 
 def snap(jobs, complete=True, error=None, token="acme"):
@@ -161,3 +161,50 @@ def test_a_sweep_survives_the_server_hanging_up(store):
     r = store.reconcile(snap([job("1")]))
     assert r.closed == 1, "reconcile did not complete after the reconnect"
     assert store.conn.execute("SELECT pg_backend_pid()").fetchone()[0] != pid
+
+
+def test_the_pulse_runs_on_postgres(store):
+    """`search.pulse` is the first query layer to reach Postgres at all.
+
+    Everything else in `search.py` is SQLite-only, so `_filters` was written
+    with `?` placeholders and nothing noticed — the export calls this one on
+    whichever backend holds the index, and `?` is a syntax error on this side.
+    """
+    from datetime import date
+
+    store.reconcile(snap([
+        job("1", posted_at="2026-09-02"),
+        job("2", "Data Engineer", posted_at="2026-08-26"),
+        job("3", "Chef", posted_at="2026-09-02"),          # outside the scope
+    ]))
+    p = search.pulse(store.conn, search.Query(data_only=True),
+                     backend="postgres", today=date(2026, 9, 7))
+    weeks = {w["start"]: w["opened"] for w in p["weeks"]}
+    assert len(p["weeks"]) == 16
+    assert weeks["2026-08-31"] == 1 and weeks["2026-08-24"] == 1
+    assert sum(weeks.values()) == 2, "the Chef leaked into a data-only pulse"
+    assert p["closures_since"]
+
+
+def test_the_two_backends_bucket_the_same_weeks(store, tmp_path):
+    """Same roles into both, then diff the series. Guards the placeholder swap
+    and the timestamptz-vs-text difference in `_day`."""
+    from datetime import date
+
+    lite = Store(sqlite_path=tmp_path / "pulse.db")
+    lite.init_schema()
+    rows = [job("1", posted_at="2026-09-02"),
+            job("2", "Data Engineer", posted_at="2026-08-26"),
+            job("3", "Analytics Lead", posted_at="2026-07-14"),
+            job("4", "Data Scientist", posted_at="2026-01-01")]   # off-chart
+    for s in (store, lite):
+        s.reconcile(snap(rows))
+
+    args = dict(qy=search.Query(data_only=True), today=date(2026, 9, 7))
+    pg = search.pulse(store.conn, backend="postgres", **args)
+    sq = search.pulse(lite.conn, **args)
+    lite.close()
+
+    series = lambda p: [(w["start"], w["opened"], w["closed"]) for w in p["weeks"]]
+    assert series(pg) == series(sq)
+    assert sum(w["opened"] for w in pg["weeks"]) == 3, "the January role was charted"

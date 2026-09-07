@@ -196,6 +196,9 @@ server does not serve it) means live, and they call `/api/*` as before. One
 renderer, one set of filters, two backends. The data-role term lists are
 *exported into the manifest* rather than retyped in JS, so the filter the README
 already got wrong once ("Senior Tax Analyst") cannot drift into two versions.
+The weekly pulse is the one figure the browser cannot derive and so ships
+precomputed in the manifest: `jobs.json` is open roles only, so a closure has
+left the file by the time the page could count it.
 
 **Open Australian roles only** — 3,356 rows, ~3MB, well under a megabyte gzipped.
 The full index is 51k rows and 28MB of JSON, which is not a page, it is a
@@ -603,15 +606,39 @@ uv run python -m reqtrace.web        # http://127.0.0.1:8765
 ```
 
 A stdlib HTTP server and two static HTML files — no framework, no bundler, no
-Node. Three endpoints (`/api/search`, `/api/stats`, `/api/runs`) and vanilla JS.
+Node. Four endpoints (`/api/search`, `/api/stats`, `/api/runs`, `/api/pulse`)
+and vanilla JS.
 
 The two pages are aimed at two different readers, and the split is deliberate.
 The front page is the **product**: someone looking for work, who does not care
-how the index is fed. Nothing about the pipeline appears on it — no board or
-adapter counts, no sweep status, no last-ingest timestamp, no closed-role
-tally, and no ATS vendor anywhere in the filters. It shows open roles and a way
-to narrow them, and that is all. Every operational figure lives on `/runs`
-instead, which the search page does not link to.
+how the index is fed. No board or adapter counts, no failure states, no ATS
+vendor anywhere in the filters. Two pipeline facts did earn a place there, and
+only because the page now makes claims that depend on them: a **swept N hours
+ago** stamp in the masthead, and the date the index started watching for
+closures. A chart of the last sixteen weeks has to say how current it is, and a
+closures series has to say how far back it can see. Every other operational
+figure still lives on `/runs`, which the search page does not link to.
+
+Narrowing is a search box, a **dial**, and two lists. The dial is the sixteen-week
+openings-and-closures chart, and dragging across it *is* the date filter — the
+chart and the control are one object, which is why there is no separate "posted
+this week" pill. The window it brushes is a pair of absolute dates rather than
+an age, so an export read three days after it was built still filters to the
+bars it was drawn against. The rail carries city and work type. The
+data-roles/all-roles toggle is gone: the page states its scope in the masthead
+and links out to the full AU set, instead of offering a control that halves the
+index's identity on click. The current search is still written to the URL, so a
+search is still a link, and links written before the dial existed still open the
+way they were shared.
+
+The pulse is role-level, from `posted_at` and `closed_at` — deliberately not
+`board_runs`, whose churn series counts a board's first sight as new and would
+therefore draw the week the index booted as the biggest hiring week on record.
+The closures half carries a second caveat that the chart states outright:
+`closed_at` records when *this* index noticed a role gone, so it cannot predate
+the first sweep. Weeks that ended before then are hatched rather than drawn as
+zero, because the absence of a measurement is not a measurement of zero. Fourteen
+of the sixteen bars are hatched today, and they fill in as the log accrues.
 
 `/runs` is the **ingest health** page. `board_runs` has logged a row per board
 per pass since the first commit and nothing ever read it back; once ingestion is

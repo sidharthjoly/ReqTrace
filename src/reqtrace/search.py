@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 import sqlite3
 from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta, timezone
 
 FTS_DDL = """
 CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
@@ -63,6 +64,11 @@ class Query:
     data_only: bool = False
     has_salary: bool = False
     days: int = 0              # only roles first seen in the last N days
+    # The dial brushes a span of weeks, which is a range and not an age: an
+    # absolute window is the only version that still means the same thing when
+    # the static export is read three days after it was built.
+    since: str = ""            # posted on or after this ISO date
+    until: str = ""            # posted strictly before this ISO date
     include_closed: bool = False
     sort: str = "newest"       # newest | relevance | salary
     limit: int = 50
@@ -130,36 +136,48 @@ def _fts_expression(q: str) -> str:
     return " AND ".join(safe) if safe else NO_MATCH
 
 
-def _filters(qy: Query, alias="j"):
+def _filters(qy: Query, alias="j", ph="?"):
+    """Shared WHERE builder. `ph` is the placeholder style: the export can run
+    this against Postgres, where `?` is a syntax error."""
     where, params = [], []
     if not qy.include_closed:
         where.append(f"{alias}.closed_at IS NULL")
     if qy.country:
-        where.append(f"{alias}.location_country = ?")
+        where.append(f"{alias}.location_country = {ph}")
         params.append(qy.country)
     if qy.city:
-        where.append(f"{alias}.location_city = ?")
+        where.append(f"{alias}.location_city = {ph}")
         params.append(qy.city)
     if qy.remote:
-        where.append(f"{alias}.remote_type = ?")
+        where.append(f"{alias}.remote_type = {ph}")
         params.append(qy.remote)
     if qy.vendor:
-        where.append(f"{alias}.ats_vendor = ?")
+        where.append(f"{alias}.ats_vendor = {ph}")
         params.append(qy.vendor)
     if qy.company:
-        where.append("COALESCE(c.name, j.board_token) = ?")
+        where.append(f"COALESCE(c.name, {alias}.board_token) = {ph}")
         params.append(qy.company)
     if qy.has_salary:
         where.append(f"{alias}.salary_min IS NOT NULL")
     if qy.days:
         where.append(
-            f"COALESCE({alias}.posted_at, {alias}.first_seen_at) >= datetime('now', ?)")
+            f"COALESCE({alias}.posted_at, {alias}.first_seen_at) >= datetime('now', {ph})")
         params.append(f"-{int(qy.days)} days")
+    # Plain string comparison against an ISO date, so the same clause runs on
+    # both backends and needs no date arithmetic. `posted_at` carries a time and
+    # sometimes an offset, so `until` is exclusive against the next week's
+    # midnight rather than inclusive against this one's.
+    if qy.since:
+        where.append(f"COALESCE({alias}.posted_at, {alias}.first_seen_at) >= {ph}")
+        params.append(qy.since)
+    if qy.until:
+        where.append(f"COALESCE({alias}.posted_at, {alias}.first_seen_at) < {ph}")
+        params.append(qy.until)
     if qy.data_only:
         t = f"LOWER(' '||{alias}.title||' ')"
-        strong = " OR ".join([f"{t} LIKE ?"] * len(DATA_TERMS))
-        not_excluded = " AND ".join([f"{t} NOT LIKE ?"] * len(ANALYST_EXCLUDE))
-        where.append(f"(({strong}) OR ({t} LIKE ? AND {not_excluded}))")
+        strong = " OR ".join([f"{t} LIKE {ph}"] * len(DATA_TERMS))
+        not_excluded = " AND ".join([f"{t} NOT LIKE {ph}"] * len(ANALYST_EXCLUDE))
+        where.append(f"(({strong}) OR ({t} LIKE {ph} AND {not_excluded}))")
         params += [f"%{x}%" for x in DATA_TERMS]
         params += ["%analyst%"] + [f"%{x}%" for x in ANALYST_EXCLUDE]
     return where, params
@@ -202,16 +220,23 @@ def search(conn, qy: Query) -> Results:
         [*params, qy.limit, qy.offset],
     ).fetchall()
 
+    # Only on the first page: the rail is already drawn by the time anything
+    # pages, and these are four GROUP BYs carrying the whole data-role filter.
     return Results(total=total, rows=[dict(r) for r in rows],
-                   facets=facets(conn, qy))
+                   facets=facets(conn, qy) if not qy.offset else {})
 
 
 def facets(conn, qy: Query) -> dict:
-    """Counts for the filter chips, respecting the current country filter."""
+    """Counts for the filter rail: each city's share of the page's own scope.
+
+    Scope is the country and the data-role filter — deliberately not the city,
+    work type or query currently chosen. The rail is a map of where the roles
+    are, and a selected city that zeroed every other city's count would stop
+    being a map the moment it became useful.
+    """
     conn.row_factory = sqlite3.Row
-    scope = "WHERE j.closed_at IS NULL" + (
-        " AND j.location_country = ?" if qy.country else "")
-    p = [qy.country] if qy.country else []
+    where, p = _filters(Query(country=qy.country, data_only=qy.data_only))
+    scope = "WHERE " + " AND ".join(where)
 
     def group(col, limit=12):
         return [dict(r) for r in conn.execute(
@@ -226,10 +251,99 @@ def facets(conn, qy: Query) -> dict:
         p).fetchall()]
 
     return {
-        "cities": group("j.location_city"),
+        "cities": group("j.location_city", 30),
         "remote": group("j.remote_type", 6),
         "vendors": group("j.ats_vendor", 6),
         "companies": companies,
+    }
+
+
+PULSE_WEEKS = 16
+
+
+def _week_starts(n: int = PULSE_WEEKS, today: date | None = None) -> list[str]:
+    """The Mondays of the last `n` weeks, oldest first, as ISO dates.
+
+    Absolute dates rather than "weeks ago": the static export is read for days
+    after it is built, and a window measured from the reader's clock would slide
+    off the bars it was drawn against."""
+    today = today or datetime.now(timezone.utc).date()
+    monday = today - timedelta(days=today.weekday())
+    return [(monday - timedelta(weeks=n - 1 - i)).isoformat() for i in range(n)]
+
+
+def _day(v) -> str:
+    """The YYYY-MM-DD head of a timestamp. SQLite stores strings and Postgres
+    hands back datetimes; both agree on the first ten characters."""
+    if v is None:
+        return ""
+    if isinstance(v, datetime):
+        return v.date().isoformat()
+    if isinstance(v, date):
+        return v.isoformat()
+    return str(v)[:10]
+
+
+def pulse(conn, qy: Query | None = None, weeks: int = PULSE_WEEKS,
+          backend: str = "sqlite", today: date | None = None) -> dict:
+    """Weekly openings and closures at role level, oldest week first.
+
+    Role level from `posted_at` / `closed_at`, deliberately not `board_runs`:
+    the run log counts a board's first sight as new, so on the week the index
+    booted every role it has ever seen would read as an opening.
+
+    The closures series carries its own honesty problem, which is why
+    `closures_since` ships with it. `closed_at` records when *this* index
+    noticed a role gone, so it cannot predate the first sweep — weeks before
+    that are unobserved, not quiet, and the page has to say so rather than draw
+    a row of confident zeroes.
+    """
+    qy = qy or Query(data_only=True)
+    ph = "%s" if backend == "postgres" else "?"
+    starts = _week_starts(weeks, today)
+    edge = (date.fromisoformat(starts[-1]) + timedelta(days=7)).isoformat()
+
+    # include_closed: a role that closed inside the window is exactly what the
+    # lower half of the chart is counting.
+    scope = Query(country=qy.country, data_only=qy.data_only, include_closed=True)
+    where, params = _filters(scope, ph=ph)
+
+    # Bucketed in Python rather than in SQL: julianday() is SQLite-only and
+    # date_trunc() is Postgres-only, and the scope is a few thousand rows.
+    rows = conn.execute(
+        f"SELECT COALESCE(j.posted_at, j.first_seen_at), j.closed_at "
+        f"FROM jobs j WHERE {' AND '.join(where)}", params).fetchall()
+
+    opened = [0] * weeks
+    closed = [0] * weeks
+
+    def bucket(day: str) -> int | None:
+        if not day or day < starts[0] or day >= edge:
+            return None
+        lo, hi = 0, weeks - 1
+        while lo < hi:                       # the last start not after `day`
+            mid = (lo + hi + 1) // 2
+            if starts[mid] <= day:
+                lo = mid
+            else:
+                hi = mid - 1
+        return lo
+
+    for row in rows:
+        i = bucket(_day(row[0]))
+        if i is not None:
+            opened[i] += 1
+        i = bucket(_day(row[1]))
+        if i is not None:
+            closed[i] += 1
+
+    first_run = conn.execute("SELECT min(fetched_at) FROM board_runs").fetchone()[0]
+
+    return {
+        "weeks": [{"start": s, "opened": opened[i], "closed": closed[i]}
+                  for i, s in enumerate(starts)],
+        "closures_since": _day(first_run) or None,
+        "scope": "data" if qy.data_only else "all",
     }
 
 

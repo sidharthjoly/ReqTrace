@@ -107,6 +107,10 @@ def build(db: Path) -> dict:
         jobs = [dict(r) for r in conn.execute(JOBS_SQL).fetchall()]
     health = runs.health(conn, backend=backend)
     stats = search.stats(conn)
+    # Precomputed, because the browser cannot derive it: jobs.json is open roles
+    # only, so a closure has left the file by the time the page could count it.
+    pulse = search.pulse(conn, search.Query(data_only=True), backend=backend)
+    pulse["last_run"] = _iso(health["summary"]["last_run"])
     conn.close()
 
     (SITE / "data").mkdir(parents=True, exist_ok=True)
@@ -127,6 +131,7 @@ def build(db: Path) -> dict:
         # role", so the server filter and the static filter cannot drift.
         "data_terms": list(search.DATA_TERMS),
         "analyst_exclude": list(search.ANALYST_EXCLUDE),
+        "pulse": pulse,
     }
     write = lambda name, obj: (SITE / "data" / name).write_text(  # noqa: E731
         json.dumps(obj, separators=(",", ":"), default=_iso))
