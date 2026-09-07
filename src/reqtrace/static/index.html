@@ -484,7 +484,10 @@ function searchLocal(p) {
       if (!d || (since && d < since) || (until && d >= until)) return false;
     }
     if (terms.length) {
-      const hay = `${j.title} ${j.company} ${j.snippet || ''}`.toLowerCase();
+      // `kw` is the role's whole vocabulary, exported in place of a prose
+      // excerpt. An export built before that change still carries `snippet`,
+      // so both are searched and an old snapshot keeps working.
+      const hay = `${j.title} ${j.company} ${j.kw || j.snippet || ''}`.toLowerCase();
       if (!terms.every(t => hay.includes(t))) return false;
     }
     return true;

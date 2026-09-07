@@ -200,20 +200,30 @@ The weekly pulse is the one figure the browser cannot derive and so ships
 precomputed in the manifest: `jobs.json` is open roles only, so a closure has
 left the file by the time the page could count it.
 
-**Open Australian roles only** — 3,356 rows, ~3MB, well under a megabyte gzipped.
-The full index is 51k rows and 28MB of JSON, which is not a page, it is a
-download.
+**Open Australian roles only** — 3,422 rows, 4.7MB, 0.82MB gzipped. The full
+index is 51k rows and 28MB of JSON, which is not a page, it is a download.
 
-Two honest limits, both stated on the pages themselves rather than left to be
-discovered:
+Descriptions do not ship; their **vocabulary** does. Each role carries a `kw`
+blob: its deduplicated tokens, minus any carried by more than 4% of the corpus.
+Those are most of the bytes and can narrow nothing — "experience", "team",
+"role", "working" are in nearly every ad — while a token in three ads is exactly
+the one worth typing.
 
-- **Search is narrower.** The live index runs FTS5 over full descriptions; the
-  export carries a 320-character preview, so a query matching only deep in a body
-  finds nothing. Measured: `data scientist` returns 55 live and 31 static, and
-  the 54 AU roles whose only match is past the preview are exactly the gap.
-- **It is a snapshot.** Stale the moment the next sweep lands, so both pages
-  carry the export timestamp, and `/runs` says outright that its "N hours ago"
-  figures count from the export rather than from now.
+This replaced a 320-character preview, which was the worst possible selection.
+Ads open with boilerplate and name their tools at the end, so on the published
+site `pytorch`, `causal` and `terraform` matched **nothing at all** while
+matching 22, 15 and 80 roles in the index. Recall now equals the server's on
+every term measured (`snowflake` 56, `kubernetes` 124, `dbt` 30), for 0.82MB
+gzipped against 0.35MB. The two are still not the same mechanism — FTS5 stems
+and prefix-matches where the browser takes substrings — so they can still differ
+on a word's other forms; they no longer differ on whether the word was read at
+all. The field costs nothing in fidelity because the row stopped rendering an
+excerpt when it became a single line: it only has to match now, never to read.
+
+One honest limit remains, stated on the page rather than left to be discovered:
+**it is a snapshot**. Stale the moment the next sweep lands, so both pages carry
+the export timestamp, and `/runs` says outright that its "N hours ago" figures
+count from the export rather than from now.
 
 The daily sweep re-exports `site/` when it finishes, and — with
 `install_autorun.py --publish`, which is how it is currently installed — pushes

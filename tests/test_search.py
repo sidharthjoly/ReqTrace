@@ -215,3 +215,32 @@ def test_pulse_reports_what_it_has_actually_looked_at(dated):
 
 def _day_of_last_run(conn):
     return str(conn.execute("SELECT max(fetched_at) FROM board_runs").fetchone()[0])[:10]
+
+
+# -- the exported search field -----------------------------------------------
+
+def test_keywords_keep_the_rare_terms_and_drop_the_ubiquitous_ones():
+    """The published site searches this blob instead of a prose excerpt.
+
+    A 320-character prefix matched nothing for "pytorch" or "causal" across the
+    whole AU index, because ads open with boilerplate and name their tools at
+    the end. Frequency is the right axis to cut on: a token in almost every ad
+    cannot narrow anything, and a token in three ads is the one worth typing."""
+    bodies = ["We need PyTorch and causal inference. Great team, great role."] \
+        + ["Great team, great role. Generalist work." for _ in range(40)]
+    blobs = S.keywords(bodies)
+    assert "pytorch" in blobs[0] and "causal" in blobs[0]
+    # "team", "role" and "great" are in all 41 — far above the 4% cut.
+    for ubiquitous in ("team", "role", "great"):
+        assert ubiquitous not in blobs[0].split(), ubiquitous
+
+
+def test_keywords_survive_a_corpus_too_small_to_prune():
+    """4% of three documents rounds below one, which without a floor prunes
+    every token and ships a search index that matches nothing — silently."""
+    blobs = S.keywords(["Snowflake and dbt", "PyTorch and Airflow"])
+    assert "snowflake" in blobs[0] and "pytorch" in blobs[1]
+
+
+def test_keywords_tolerate_empty_bodies():
+    assert S.keywords(["", None]) == ["", ""]

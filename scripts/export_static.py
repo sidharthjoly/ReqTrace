@@ -58,7 +58,7 @@ SELECT j.ats_vendor, j.board_token, j.external_id, j.title,
        j.salary_min, j.salary_max, j.salary_currency, j.salary_period,
        j.department, j.seniority, j.apply_url,
        j.posted_at, j.first_seen_at,
-       SUBSTR(COALESCE(j.description_text, ''), 1, 320) AS snippet
+       COALESCE(j.description_text, '') AS body
 FROM jobs j
 LEFT JOIN companies c
   ON c.ats_vendor = j.ats_vendor AND c.board_token = j.board_token
@@ -105,6 +105,13 @@ def build(db: Path) -> dict:
             jobs = [dict(r) for r in cur.execute(JOBS_SQL).fetchall()]
     else:
         jobs = [dict(r) for r in conn.execute(JOBS_SQL).fetchall()]
+    # The description is read for its vocabulary and then dropped: the row is a
+    # single line now and renders no excerpt, so the only thing the browser
+    # still needs from the body is the ability to match it. A 320-character
+    # prefix could not do that — ads name their tools at the end.
+    for job, kw in zip(jobs, search.keywords([j.pop("body") for j in jobs])):
+        job["kw"] = kw
+
     health = runs.health(conn, backend=backend)
     stats = search.stats(conn)
     # Precomputed, because the browser cannot derive it: jobs.json is open roles

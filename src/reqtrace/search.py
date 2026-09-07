@@ -258,6 +258,46 @@ def facets(conn, qy: Query) -> dict:
     }
 
 
+# The export ships one of these per role in place of a description. The page
+# that reads it stopped rendering excerpts when the row became a single line, so
+# the field only has to *match* now, never to read — which frees it to be the
+# role's vocabulary rather than the first 320 characters of its prose.
+#
+# A prefix was the worst possible selection: job ads open with boilerplate and
+# name their tools at the end, so "pytorch" and "causal" matched nothing at all
+# on the published site while matching 22 and 15 roles in the index.
+KW_MAX_DF = 0.04
+# A floor under the proportional cut. On a small corpus 4% rounds below one
+# document and the filter eats every token it is handed — which is silent, and
+# leaves a search index that matches nothing.
+KW_MIN_DF = 5
+_KW_WORD = re.compile(r"[a-z0-9][a-z0-9+.#/-]{1,}")
+
+
+def keywords(bodies, max_df: float = KW_MAX_DF) -> list[str]:
+    """One space-joined, deduplicated token blob per body.
+
+    Tokens carried by more than `max_df` of the corpus are dropped. They are the
+    ones that cannot narrow anything — "experience", "team", "role", "working"
+    are in nearly every ad — and they are most of the bytes. Pruning at 4% holds
+    full recall for the terms a hunter actually types (a skill in 4% of 3,400
+    roles is still 137 of them) while cutting the payload by two thirds.
+
+    Rare tokens are kept deliberately: a word in three ads is precisely the one
+    worth searching for.
+    """
+    from collections import Counter
+
+    sets = [{w for w in _KW_WORD.findall((b or "").lower())
+             if len(w) > 2 and not w.isdigit()} for b in bodies]
+    df = Counter()
+    for s in sets:
+        df.update(s)
+    cap = max(max_df * len(sets), KW_MIN_DF)
+    keep = {w for w, n in df.items() if n <= cap}
+    return [" ".join(sorted(s & keep)) for s in sets]
+
+
 PULSE_WEEKS = 16
 
 
