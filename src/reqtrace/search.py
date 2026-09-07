@@ -292,11 +292,12 @@ def pulse(conn, qy: Query | None = None, weeks: int = PULSE_WEEKS,
     the run log counts a board's first sight as new, so on the week the index
     booted every role it has ever seen would read as an opening.
 
-    The closures series carries its own honesty problem, which is why
-    `closures_since` ships with it. `closed_at` records when *this* index
-    noticed a role gone, so it cannot predate the first sweep — weeks before
-    that are unobserved, not quiet, and the page has to say so rather than draw
-    a row of confident zeroes.
+    Both ends of the series are bounded by what the index has actually looked
+    at, and both bounds ship with it. `closed_at` records when *this* index
+    noticed a role gone, so closures cannot predate the first sweep
+    (`closures_since`). Nothing at all is known about a week that began after
+    the last sweep (`observed_to`). Weeks outside those bounds are unobserved,
+    not quiet, and the page has to say so rather than draw confident zeroes.
     """
     qy = qy or Query(data_only=True)
     ph = "%s" if backend == "postgres" else "?"
@@ -337,12 +338,16 @@ def pulse(conn, qy: Query | None = None, weeks: int = PULSE_WEEKS,
         if i is not None:
             closed[i] += 1
 
-    first_run = conn.execute("SELECT min(fetched_at) FROM board_runs").fetchone()[0]
+    # The run log is the only record of what the index has looked at, and both
+    # ends of the chart are bounded by it.
+    first_run, last_run = conn.execute(
+        "SELECT min(fetched_at), max(fetched_at) FROM board_runs").fetchone()
 
     return {
         "weeks": [{"start": s, "opened": opened[i], "closed": closed[i]}
                   for i, s in enumerate(starts)],
         "closures_since": _day(first_run) or None,
+        "observed_to": _day(last_run) or None,
         "scope": "data" if qy.data_only else "all",
     }
 

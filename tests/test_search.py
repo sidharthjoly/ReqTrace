@@ -202,3 +202,16 @@ def test_filters_can_speak_postgres_placeholders():
         S.Query(data_only=True, city="Sydney", remote="hybrid",
                 since="2026-08-31", until="2026-09-07", vendor="greenhouse",
                 company="Acme", days=7))[1].__len__()
+
+
+def test_pulse_reports_what_it_has_actually_looked_at(dated):
+    """Both ends of the chart are bounded by the run log. A week that began
+    after the last sweep is unread, not empty — drawn as a zero it would be the
+    first thing a reader sees and the most confident lie on the page."""
+    p = S.pulse(dated, S.Query(data_only=True), today=TODAY)
+    assert p["observed_to"] == _day_of_last_run(dated)
+    assert p["closures_since"] <= p["observed_to"]
+
+
+def _day_of_last_run(conn):
+    return str(conn.execute("SELECT max(fetched_at) FROM board_runs").fetchone()[0])[:10]

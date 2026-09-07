@@ -96,11 +96,14 @@
   .dn { height:34px; }
   .dn b { display:block; width:100%; border-radius:0 0 6px 6px;
     background:var(--olive); transition:height .3s cubic-bezier(.2,.9,.2,1); }
-  /* A week that ended before the first sweep cannot have "no closures" — it has
-     no reading at all, and a zero-height bar would claim otherwise. Hatched,
-     because the absence of a measurement is not a measurement of zero. */
-  .dn.blind { border-radius:0 0 6px 6px; background:repeating-linear-gradient(
+  /* A week the index has not looked at cannot have "no roles" — it has no
+     reading at all, and a zero-height bar would claim otherwise. Hatched at
+     both ends, because the absence of a measurement is not a measurement of
+     zero: closures before the first sweep, anything after the last one. */
+  .dn.blind, .up.blind { background:repeating-linear-gradient(
     45deg, transparent 0 3px, rgba(32,30,29,.11) 3px 5px); }
+  .dn.blind { border-radius:0 0 6px 6px; }
+  .up.blind { border-radius:6px 6px 0 0; }
   .tick { text-align:center; font-size:9.5px; color:var(--ink-45); margin-top:6px;
     font-variant-numeric:tabular-nums; height:13px; }
   .brush { position:absolute; top:8px; bottom:26px; border:2px solid var(--accent);
@@ -534,6 +537,10 @@ function drawDial() {
   // Drawing it as a zero-height bar would say "nothing closed", which is a
   // claim the index is not in a position to make.
   const since = PULSE.closures_since || '9999-12-31';
+  // Nothing is known about a week that began after the last sweep. Today that
+  // is the current week, which would otherwise draw as a confident zero at the
+  // very edge the reader looks at first.
+  const seen = PULSE.observed_to || '9999-12-31';
   // Compared on the week's *end*: the week the index booted in is partly
   // observed, and hiding it would throw away closures that were really seen.
   const ends = iso => {
@@ -544,21 +551,31 @@ function drawDial() {
 
   $('#bars').innerHTML = w.map((x, i) => {
     const blind = ends(x.start) <= since;
-    return `<div class="wk" data-i="${i}" title="${stamp(x.start)} — ${x.opened} opened${
-      blind ? ', closures not yet watched' : ', ' + x.closed + ' closed'}">
-      <span class="up"><b style="height:${Math.round(x.opened / maxUp * 62)}px"></b></span>
+    const unread = x.start > seen;
+    const tip = unread ? `${stamp(x.start)} — not swept yet`
+      : `${stamp(x.start)} — ${x.opened} opened${
+          blind ? ', closures not yet watched' : ', ' + x.closed + ' closed'}`;
+    return `<div class="wk" data-i="${i}" title="${tip}">
+      <span class="up${unread ? ' blind' : ''}">${unread ? ''
+        : `<b style="height:${Math.round(x.opened / maxUp * 62)}px"></b>`}</span>
       <span class="mid"></span>
-      <span class="dn${blind ? ' blind' : ''}">${blind ? ''
+      <span class="dn${blind || unread ? ' blind' : ''}">${blind || unread ? ''
         : `<b style="height:${Math.round(x.closed / maxDn * 34)}px"></b>`}</span>
-      <span class="tick">${i % 4 === 0 ? stamp(x.start) : ''}</span>
+      <span class="tick">${i % 4 === 0 || i === w.length - 1 ? stamp(x.start) : ''}</span>
     </div>`;
   }).join('');
 
   const blind = w.filter(x => ends(x.start) <= since).length;
-  $('#blindnote').textContent = blind
-    ? `Closures counted from ${stamp(since)}, when the index started watching. `
-      + `The ${blind} earlier week${blind === 1 ? '' : 's'} show openings only.`
-    : '';
+  const unread = w.filter(x => x.start > seen).length;
+  const said = [];
+  if (blind) said.push(`Closures counted from ${stamp(since)}, when the index `
+    + `started watching — the ${blind} week${blind === 1 ? '' : 's'} before that `
+    + `show openings only.`);
+  if (unread) said.push(`The last sweep was ${stamp(seen)}, so the `
+    + `${unread === 1 ? 'week' : unread + ' weeks'} after it ${
+        unread === 1 ? 'is' : 'are'} hatched rather than empty: nothing has `
+    + `looked at ${unread === 1 ? 'it' : 'them'} yet.`);
+  $('#blindnote').textContent = said.join(' ');
   paintDial();
 }
 
