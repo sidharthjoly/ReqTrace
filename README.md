@@ -462,14 +462,24 @@ Cadence: discovery is a **monthly batch** (new employers appear slowly);
 ingestion stays on the daily cron. Public datasets and documented endpoints
 only — if discovery ever needs proxies or bot evasion, stop.
 
-### Token case sensitivity, which bites twice
+### Token case sensitivity, which bites three times
 
 Greenhouse, Ashby and SmartRecruiters resolve tokens case-insensitively, so a
 crawl returns `OpenAI` and `openai` as separate candidates for one board — 17
 such pairs in the first sweep, deduped in the report step. **Lever is the
 exception**: `jobs.lever.co/Zeller` resolves and `/zeller` 404s, so Lever tokens
-keep their case and must never be lowercased. Both `discover_boards.py` and
-`run.py` encode this split.
+keep their case and must never be lowercased.
+
+**Workday is the third bite, and it cost 30% of a sweep to find.** Adding it
+meant this split had to be checked for a vendor nobody had checked it for, and
+the answer was not the one the two-vendor version of this section implied: 216
+of 720 validated Workday boards were case variants of another. See the Workday
+section below for the evidence.
+
+The split had accumulated three independent copies — `run.py`,
+`discover_boards.py` and `crawl_forever.py adopt` — which is exactly how a
+fourth vendor gets it wrong again. It now lives once, in
+`crawl.CASE_INSENSITIVE`, and the readers import it.
 
 ## Board discovery, part two: an actual crawler
 
@@ -609,6 +619,327 @@ once costs one validation request on every future sweep. `candidates_*.json`
 from Common Crawl has had the same property since day one; if either file ever
 gets expensive, prune against `validated_*.json`.
 
+## Board discovery, part three: the crawl that doesn't stop
+
+Parts one and two both terminate, and both terminate for the same reason: they
+are seeded from a list of employers somebody wrote down. Common Crawl sweeps
+the ATS domains we name; the focused crawler visits the employers Step 0
+audited. Coverage is therefore capped by a CSV, and "find more employers" was
+never a matter of running either of them harder.
+
+`scripts/crawl_forever.py` removes the cap. It runs laps until something kills
+it, and the queue lives in Postgres rather than in the process:
+
+```bash
+uv run python scripts/crawl_forever.py --seed au,global,audit --laps 3   # try it
+uv run python scripts/crawl_forever.py --expand                          # the real thing
+uv run python scripts/crawl_forever.py status
+uv run python scripts/crawl_forever.py adopt      # hand boards to ingestion
+```
+
+`.github/workflows/crawl.yml` runs it four times a day for 45 minutes. "Infinite"
+and "a six-hour job ceiling" are not in tension once the frontier is a table:
+each run claims work, crawls, writes back, exits, and the next run resumes
+exactly where it stopped. The crawl is continuous even though no process is.
+
+### The frontier had to become a table
+
+`crawl_state.json` held the seen-set, the queue and the findings, rewritten
+whole at every checkpoint. That is right for a few hundred kilobytes and wrong
+for a queue that grows forever — three problems, all the same problem: the
+state was a document when it wanted to be a table. `src/reqtrace/frontier.py`
+moves it, and the properties fall out of the schema:
+
+- **"Seen" becomes "a row exists."** Deduplication is the `url` primary key and
+  `ON CONFLICT DO NOTHING`, so a page crawled six restarts ago is never fetched
+  twice, and the seen-set costs no memory.
+- **Checkpointing becomes continuous.** Rows are marked done as they are
+  crawled, so a kill loses only what was in flight.
+- **Per-host budgets survive restarts.** `crawl_hosts.pages` is a lifetime
+  count. Without it `--max-per-host` silently degrades from a budget into a
+  per-lap rate limit, and the daemon crawls the same site twelve pages at a
+  time forever.
+- **Claims are reclaimable.** A clean stop releases them; a `SIGKILL` leaves
+  them, and `requeue_stale_claims` picks them up after six hours. Without that
+  every hard stop strands work permanently.
+
+### What makes it unbounded, and what still bounds it
+
+Exactly one rule is lifted. `score_link` returns 0 for off-site links, which is
+correct per-employer and is what caps the whole crawl; `--expand` adds a
+narrow exception for **employer homepages linked from directory pages** — the
+"our customers", "portfolio" and "member" grids that are the densest lists of
+company domains on the open web. A harvested domain becomes a new seed at depth
+0 and the ordinary focused rules apply again from there.
+
+Everything else still bounds it, and the important one is unchanged: **a host
+is done the moment a fingerprint hits**, now persisted so a restart cannot
+forget it. The crawl is unbounded in employers and strictly bounded per
+employer, which is the only shape in which "never stops" is also "never rude".
+`seedable_domain` rejects same-site links, article-shaped URLs, and the social,
+CDN, ATS and government hosts that appear in every footer on the web.
+
+It is also unhurried on purpose — 25 pages a lap with 30 seconds between laps
+is roughly three pages a minute spread over hundreds of hosts, underneath which
+every politeness rule in `crawl.py` still applies per host (robots.txt with
+`Crawl-delay`, one request at a time, a lifetime cap of 12 pages per host).
+Discovery is a background process measured in weeks.
+
+The scheduled run takes `--minutes`, not `--laps`. How long a lap takes is
+emergent — how many claimed URLs share a host, what `Crawl-delay` those hosts
+declare, how many time out — so converting a time budget into a lap count in
+advance is guesswork. The first version of `crawl.yml` guessed a lap at 15
+minutes; measured, it is about 10 seconds.
+
+### Adoption is the hinge, and it has a sharp edge
+
+`crawl_findings.adopted_at` is what makes the pipeline continuous rather than a
+report someone pastes into a CSV. `adopt` writes the ingestable findings into
+`data/discovered_boards.csv` — the file `reqtrace.run` reads — and then marks
+them adopted.
+
+Those two writes go to different places — the flag to Postgres, the board to a
+file that has to be committed and pushed — and anything in between (a rebase
+conflict, a protected branch, a dead runner) would leave the flag saying
+"handled" and the file not listing the board. Gated on the flag, that board
+would never be offered again and never be swept.
+
+So **the flag is not the gate**. `adopt` offers whatever the CSV does not
+already list, which makes it idempotent and self-healing: a failed push just
+means the same boards come round next run. `adopted_at` is what it should
+always have been — a record of when a board first landed. This is also why
+adoption runs in `crawl.yml`, where it commits the file, and not in
+`sweep.yml`, whose runner throws its checkout away.
+
+The CSV stays in git deliberately: it is the append-only record that protects
+closure detection, and a record with no version history is one bad run away
+from silently un-adopting boards whose jobs would then sit open forever.
+
+### Workday, which is where the large employers actually are
+
+The first probe of this work crawled five named companies and resolved
+Accenture to `workday:accenture.wd103/AccentureCareers` in one hop — a vendor
+with an adapter already written. That prompted adding `*.myworkdayjobs.com` to
+the Common Crawl `SOURCES`, which had covered only the four single-segment
+vendors because the composite `tenant.wdN/Site` identity did not fit the shape.
+
+Validating it needed its own path, and finding out why is the interesting part.
+The obvious approach — pull a page of postings and test their locations —
+**rejects exactly the boards worth having**. Accenture's board is 2,000 jobs, an
+unfiltered sample of 20 is whatever Workday sorts first, and on some tenants the
+listing endpoint returns `locationsText` empty, so every job in the sample parses
+as location-unknown and the board scores zero Australian roles. It has 372.
+
+So `workday_row` asks the search endpoint instead of counting a sample:
+`searchText` is tenant-independent (unlike the location facet GUIDs
+`adapters/workday.py` documents as useless across tenants), and the `total` it
+returns is a whole-board answer. It is a keyword match rather than a location
+filter, so the count is an upper bound — which is the right direction to be
+loose in, because this decides whether a board is worth *fetching* and the
+adapter's own location parsing decides what reaches the index.
+
+| board | jobs | AU |
+|---|---|---|
+| `cba.wd3/CommBank_Careers` | 221 | 191 |
+| `accenture.wd103/AccentureCareers` | 2,000 | 372 |
+| `telstra.wd3/Telstra_Careers` | 220 | 220 |
+
+A full sweep of `*.myworkdayjobs.com` is only five index pages, and it is by
+some distance the most productive thing in this repo: **4,894 raw tokens →
+3,040 after filtering → 720 validated → 504 distinct → adopted**, against the
+12 Workday boards the project had before. `data/discovered_boards.csv` went
+from 317 boards to 838.
+
+Two junk problems had to be solved to get there, and both are the kind that
+look like tuning and are not.
+
+**A third of the raw tokens were `robots`.** A URL-index sweep meets every
+host's `robots.txt` long before it meets any board, so 1,611 of 4,894 tokens
+were `tenant.wdN/robots` — each costing two validation requests to disprove.
+The obvious fix is to run the site path through `SKIP_TOKENS`, and it is wrong:
+that list rejects `careers` and `jobs`, which are among the commonest *real*
+Workday site paths — 152 `/careers` boards in this sweep alone. So
+`plausible_token` rejects only what cannot be a site (root files like
+`robots`/`llms`/`sitemap`, bare locale segments, pure digits) and leaves
+everything else to validation.
+
+**Workday resolves site paths case-insensitively**, which nothing in the
+project knew. 216 of the 720 validated boards (30%) were case variants of
+another — `cba.wd3/CommBank_Careers` and `cba.wd3/commbank_careers` both
+answering with the same 220 jobs. Probing directly settles it:
+`cba.wd3/cOmMbAnK_cArEeRs` returns that board and `cba.wd3/NotARealSite` 404s.
+Left unhandled, 30% of Workday employers would be fetched twice on every sweep
+forever.
+
+That fact had three separate copies of `CASE_INSENSITIVE = {"greenhouse",
+"ashby", "smartrecruiters"}` to go stale in, so it now lives once in
+`crawl.CASE_INSENSITIVE` and the readers import it. **Lever stays out of that
+set**: `jobs.lever.co/Zeller` resolves and `/zeller` 404s, so folding case there
+drops real boards — which `crawl_forever.py adopt` was doing, having lowercased
+every vendor's token.
+
+### The schedule, and the two different limits that shaped it
+
+The sweep runs every four hours and the discovery crawl four times a day. How
+it got there is a small lesson in which constraint you are actually optimising
+against, because the answer changed twice.
+
+**First constraint: money.** The repo was private, so Actions minutes were
+metered — 3,000 a month on the plan the GitHub Student pack grants. A nightly
+sweep of 450 boards was ~5,700 of them and the crawler as first written (three
+45-minute runs a day) another ~4,050: roughly $54 a month, two thirds of it
+spent on a crawler whose own documentation says it does not need to hurry.
+
+That forced a good change rather than merely a cheap one, because the waste was
+real. Of 866 boards, 190 have ever posted an Australian *data* role; 54 more
+are large Australian employers with no data opening right now; the remaining
+640 hold 21% of the Australian roles and not one data role between them.
+Fetching all three groups on one clock is what made "more often" look
+unaffordable.
+
+So boards carry a target interval by tier, and `stalest` ranks by how overdue
+each board is against **its own** interval rather than by raw age:
+
+| tier | definition | interval | boards |
+|---|---|---|---|
+| hot | has posted an AU data role | 6h | 190 |
+| warm | ≥25 AU roles, no data role | 24h | 54 |
+| cold | everything else | 72h | 640 |
+
+`hot` is defined by *relevance*, not volume — a board with three roles this
+index cares about outranks one with three hundred it does not. That ordering is
+the whole mechanism: ranked by age, fetching the hot tier four times a day
+means fetching the tail four times a day too, and six runs cost six nightlies.
+Ranked by overdue-ness a cold board simply is not eligible in between, so the
+extra runs cost about what the hot tier costs. A board that is not yet due is
+skipped even when budget remains, which is why `--budget` stopped being a
+tuning knob and became a generous safety cap. The knobs are `--interval-hot`,
+`--interval-warm` and `--interval-cold`.
+
+**Second constraint: politeness.** The repo is public now, so minutes are free
+— and the intervals above are still deliberate, because the limit that always
+mattered was never the bill. **These are other people's servers.** The current
+settings come to ~1,030 board-fetches a day, on the order of 15-20k HTTP
+requests spread over seven vendors and twenty-four hours: a handful per minute
+per vendor, which is a well-behaved client. Ten times that would not be, and no
+amount of free runner time would make it so. Free minutes changed how often
+this runs; they did not change what it is allowed to do.
+
+The sweep runs *more often than the shortest interval* on purpose. Six runs a
+day against a 6-hour hot interval decouples "when a board becomes due" from
+"when a run happens", so a board falling due at 06:00 waits at most four hours
+rather than until tomorrow. The crawl's four slots are placed in the gaps
+between the six sweeps: they share a `reqtrace-pipeline` concurrency group, and
+GitHub keeps only ONE pending run per group and discards an older pending one
+when a newer arrives — so a slot that habitually collided would not queue, it
+would silently skip.
+
+One casualty is worth naming. `runs.STALE_HOURS` is a single threshold compiled
+into SQL, and boards no longer share one interval, so it sits above the cold
+tier (96h) and means only "nothing has fetched this in four days." It will not
+catch a hot board that died yesterday. The signals that do catch that —
+`last_run` and the `failed`/`incomplete` counts — are tier-independent, so the
+runs page still answers "is the pipeline alive". Comparing per board needs each
+board's target interval recorded on its `board_runs` row.
+
+### What re-validation was worth: nothing, and that is the useful part
+
+The 6,826 tokens Common Crawl had already harvested were validated once, in
+September. The obvious hypothesis is that this is a stale snapshot — a board
+with no Australian roles that day may have them now — so the whole set was
+re-validated against live feeds.
+
+It returned **326 boards against the previous ~325**. One net board.
+
+So the AU gate is not a stale snapshot, it is a real ceiling: roughly 95% of
+Greenhouse and Ashby boards genuinely have no Australian roles at any given
+moment, and re-running validation recovers nothing. That kills the
+cheapest-looking route to wider coverage and is the reason Workday — a vendor
+whose employers are large enough to have an Australian office at all — is where
+the remaining upside sits.
+
+### The sweep budget, which had to be fixed first
+
+This was the blocker, not the crawler. `board_runs` put a full sweep at ~50
+seconds a board; at 357 boards against the workflow's 330-minute timeout there
+was room for about 30 more before the nightly started failing — and the failure
+mode is the worst one available. A sweep that times out partway through leaves
+boards it never reached looking exactly like boards whose jobs all closed at
+once, which is the single case `store.py` is built to refuse.
+
+`reqtrace.run --budget N` rotates instead of truncating: sweep the N boards
+that went longest without a successful fetch, never-fetched ones first. What
+makes rotating safe where truncating is not is `store.reconcile` — it is only
+ever called for a board that was actually fetched, so a board left out of a
+pass keeps its rows and its `closed_at` values untouched. It goes **stale**,
+which `runs.summary` already counts and the runs page already shows, rather
+than wrong. Nothing is closed by not looking.
+
+The nightly now runs `--budget 450 --deadline 270`, and the second flag is the
+one that actually holds. **Boards are not interchangeable units of time.**
+
+The numbers come from a stratified sample of the adopted Workday boards, and
+they corrected two assumptions written here earlier.
+
+**Workday is not slower than the mean.** Most of its boards are cheaper than
+the 59s each that the pre-existing 357 measured — a 16-job board is 3.5s, a
+72-job board 8.6s.
+
+**But per-job cost varies about fourfold between tenants, and not for any
+reason you can see from the board.** Three boards over 500 jobs came in at
+0.060, 0.097 and 0.241 seconds per job, and the ordering is the opposite of the
+obvious hypothesis: the *fastest* was the one with the most Australian roles
+(889 jobs, 58 AU) and the *slowest* the one with the fewest (517 jobs, 2 AU).
+It is tenant latency, not work done, so board size and AU count together do not
+predict duration.
+
+That is why `--budget` stays optimistic at 450 while `--deadline 270` does the
+actual bounding. The asymmetry favours it: on a fast night the budget is spent
+and more boards stay fresh; on a slow night the deadline stops the pass early
+and the boards it did not reach go stale, which is safe. A lower budget would
+cap the good nights and buy nothing on the bad ones. Sweeping all 866 boards
+would be somewhere near 8h against a 5.5h ceiling, so some limit is required
+regardless.
+
+What *is* slow is a specific and rare shape, and the cost model only makes
+sense once you know why. `accenture.wd103/AccentureCareers` ran past twelve
+minutes where its 2,000 jobs predict about three. The reason is the same quirk
+that broke its validation: **its listing returns `locationsText` empty.**
+`maybe_australian` cannot rule anything out without a location, so the adapter
+fetches per-job detail for all 2,000 postings rather than the ~370 that are
+actually Australian. Sampling 30 adopted boards, 1 (3%) has blank locations, so
+this is roughly 15 boards of the 505 — rare enough not to reshape the budget,
+common enough to need the per-board timeout that bounds it.
+
+`--deadline` stops *starting* boards once the clock runs out, leaving an hour
+for the export and publish steps. It is safe for exactly the reason the
+rotation is: a board that was not fetched is never reconciled, so it goes stale
+rather than wrong. A 25-minute per-board timeout backs it up, because the
+deadline is checked before a board starts and never again — with
+`CONCURRENCY = 4`, four boards can begin a second before it and run past it
+unbounded, and httpx's 45s timeout is per *request*, not per board. A board cut
+off comes back `complete=False`, which `store.py` already refuses to close
+anything from.
+
+**The order is by last attempt, not last success**, and getting that backwards
+is a starvation loop rather than an inefficiency. Rank on successful fetches
+and a board that never completes has no successful run, so it sorts ahead of
+every board that does, is picked first every night, spends its minutes, fails,
+and sorts first again tomorrow. A few boards like Accenture would permanently
+occupy the front of the budget while the boards that actually succeed rotate
+ever more slowly. Ranking on attempts sends a board that just cost us minutes
+to the back whether or not it worked, while a board nobody has *ever* tried
+still jumps the queue — which is what a newly adopted board needs.
+
+One knock-on: at 866 boards and `--budget 450`, a board is fetched roughly
+every 1.9 days *by design*. So `runs.STALE_HOURS` went from 48 to 96 — at 48
+the runs page would report a large, permanently growing stale count for a
+pipeline working exactly as intended, which is how you train yourself to ignore
+the one number that says the schedule has genuinely stopped. The threshold has
+to exceed the rotation period, `boards / budget` days, with margin for the
+boards that hit the per-board timeout and shorten a pass. Re-derive it whenever
+the budget or the board count moves.
+
 ## The UI
 
 ```bash
@@ -697,6 +1028,19 @@ Two things the first screenshot exposed, both now fixed:
   cyber, procurement, audit…). Strong signals — data scientist, ML, analytics,
   quantitative, econometric — always match.
 
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE). Permissive like MIT, but it also grants
+patent rights explicitly and requires that attribution be preserved, which
+matters more for something with a working pipeline in it than for a snippet.
+
+Two notes on what that does and does not cover. The code is licensed; **the
+data it collects is not the project's to license** — job listings belong to the
+employers and vendors who publish them, and this index only ever reads
+documented public endpoints. And the licence is not a warranty: if you point
+this at somebody's careers site, the politeness rules in `crawl.py` are yours
+to keep honouring.
+
 ## Layout
 
 ```
@@ -707,7 +1051,9 @@ scripts/audit_followup.py    deep crawl for stragglers, false-positive rejects
 scripts/fetch_fixtures.py    complete board dumps + trimmed test samples
 scripts/discover_boards.py   Common Crawl -> candidate tokens -> validated AU boards
 scripts/crawl_careers.py     focused careers-page crawl -> the tokens CC cannot see
+scripts/crawl_forever.py     the crawl that doesn't stop: laps, expansion, adoption
 src/reqtrace/crawl.py       the crawler: robots, frontier, scoring, ATS fingerprints
+src/reqtrace/frontier.py    the queue as a table: seen-set, host budgets, findings
 scripts/probe_meta.py        one-off: Meta sitemap + JSON-LD sweep (3 AU roles)
 scripts/probe_nab.py         one-off: is NAB's AU board ingestible (no — WAF)
 src/reqtrace/search.py      FTS5 / tsvector query layer + filters
@@ -719,6 +1065,7 @@ scripts/autorun.sh           what the agent runs: one --vendor all sweep + expor
 scripts/export_static.py     site/ — the same pages with no Python behind them
 scripts/migrate_to_postgres.py  carries the SQLite history into Postgres
 .github/workflows/sweep.yml  the same sweep on a runner; needs DATABASE_URL
+.github/workflows/crawl.yml  the continuous crawl, 4x a day; adopts and commits
 tests/test_postgres.py       the Postgres path, against a real server
 data/discovered_boards.csv   newly found AU boards, ranked by AU data roles
 fixtures/samples/            committed, test-sized
