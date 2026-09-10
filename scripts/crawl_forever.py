@@ -228,11 +228,22 @@ async def forever(args) -> int:
         n = f.add([(u, host_of(u), 250, 0, registrable(u)) for u in DIRECTORY_SEEDS])
         print(f"directory pages: {n} new URLs queued", file=sys.stderr)
 
+    # An empty frontier seeds itself rather than erroring. This is the state
+    # every *first* run is in — a fresh database, or the first scheduled run
+    # after the frontier moved from a local SQLite file to Postgres — and
+    # failing there means the scheduled crawl never starts at all, and a
+    # KeepAlive daemon respawns into the same failure forever.
     if not f.count("pending"):
-        print("frontier is empty — seed it first, e.g.\n"
-              "  scripts/crawl_forever.py --seed au,global,audit", file=sys.stderr)
-        store.close()
-        return 1
+        print("frontier is empty; seeding from the known employers",
+              file=sys.stderr)
+        n = enqueue_seeds(f, seed_rows(list(SEED_FILES)))
+        n += f.add([(u, host_of(u), 250, 0, registrable(u))
+                    for u in DIRECTORY_SEEDS])
+        print(f"  -> {n} URLs queued", file=sys.stderr)
+        if not n:
+            print("nothing to seed from — no seed CSVs found", file=sys.stderr)
+            store.close()
+            return 1
 
     signal.signal(signal.SIGINT, _handle_stop)
     signal.signal(signal.SIGTERM, _handle_stop)
