@@ -293,3 +293,43 @@ def test_a_resumed_crawl_continues_instead_of_refetching():
     resumed_paths = [p for p in fetched[len(after_first):] if p != "/robots.txt"]
     assert set(after_first).isdisjoint(resumed_paths), "refetched an already-seen page"
     assert second.pages, "the resumed crawl had frontier left and did nothing with it"
+
+
+# -- composite identities out of a URL index -------------------------------
+
+def test_a_workday_site_path_may_be_the_word_careers():
+    """The trap in filtering composite tokens: `SKIP_TOKENS` rejects "careers"
+    and "jobs", and those are among the commonest real Workday site paths —
+    152 of them in one Common Crawl sweep. Reusing that list here would throw
+    away the boards the sweep exists to find."""
+    assert plausible_token("workday", "acme.wd1/Careers")
+    assert plausible_token("workday", "acme.wd1/careers")
+    assert plausible_token("workday", "cba.wd3/CommBank_Careers")
+
+
+def test_root_files_are_not_workday_site_paths():
+    """A URL-index sweep of `*.myworkdayjobs.com/*` meets every host's
+    robots.txt before it meets any board: 1,611 of 4,894 tokens in the first
+    sweep were `tenant.wdN/robots`, each costing two requests to disprove."""
+    for junk in ("acme.wd1/robots", "acme.wd1/llms", "acme.wd1/sitemap.xml",
+                 "acme.wd1/favicon.ico", "acme.wd1/en-us", "acme.wd1/es",
+                 "acme.wd1/1"):
+        assert not plausible_token("workday", junk), junk
+
+
+def test_composite_tokens_still_need_both_halves():
+    assert not plausible_token("workday", "acme.wd1")
+    assert not plausible_token("workday", "/Careers")
+
+
+def test_the_composite_filter_suits_all_three_composite_vendors():
+    """`plausible_token`'s composite branch is shared, but the right-hand half
+    means something different per vendor: a Workday *site path*, an Oracle
+    *site id*, an Eightfold *employer domain*. The junk rules were derived from
+    Workday data, so the other two need their own assertion."""
+    assert plausible_token("eightfold", "acme/canva.com")
+    assert plausible_token("eightfold", "acme/xy.com")        # short domain
+    assert plausible_token("eightfold", "acme/nab.com.au")
+    assert plausible_token("oracle", "fa-abc.fa.ocs.oraclecloud.com/CX_1")
+    assert plausible_token("oracle", "fa-abc.fa.ocs.oraclecloud.com/CX_2")
+    assert not plausible_token("eightfold", "acme/robots")

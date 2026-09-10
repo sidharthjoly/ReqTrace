@@ -39,6 +39,8 @@ from pathlib import Path
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from reqtrace.adapters.workday import parse_token as parse_workday_token  # noqa: E402
+from reqtrace.crawl import CASE_INSENSITIVE, plausible_token  # noqa: E402
 from reqtrace.normalise import is_australian, parse_location  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -48,19 +50,26 @@ OUT = ROOT / "data" / "discovered_boards.csv"
 CC_INDEX = "https://index.commoncrawl.org"
 UA = "reqtrace/0.1 (+personal job-search index)"
 
-# CC index URL patterns per vendor, and the regex that lifts the token back out.
+# CC index URL patterns per vendor, the regex that lifts the token back out,
+# and how to assemble it. The third element exists for Workday, whose identity
+# is three pieces of the URL rather than one path segment.
+_first = lambda m: m.group(1)  # noqa: E731
+
 SOURCES = {
     "greenhouse": (
         ["boards.greenhouse.io/*", "job-boards.greenhouse.io/*"],
         re.compile(r"(?:job-)?boards\.greenhouse\.io/([A-Za-z0-9_-]+)"),
+        _first,
     ),
     "ashby": (
         ["jobs.ashbyhq.com/*"],
         re.compile(r"jobs\.ashbyhq\.com/([A-Za-z0-9_-]+)"),
+        _first,
     ),
     "smartrecruiters": (
         ["careers.smartrecruiters.com/*"],
         re.compile(r"careers\.smartrecruiters\.com/([A-Za-z0-9_-]+)"),
+        _first,
     ),
     # Lever is here for completeness, but Common Crawl barely indexes
     # jobs.lever.co (a sweep returns essentially just robots.txt), so Lever
@@ -68,6 +77,23 @@ SOURCES = {
     "lever": (
         ["jobs.lever.co/*"],
         re.compile(r"jobs\.lever\.co/([A-Za-z0-9_-]+)"),
+        _first,
+    ),
+    # Workday, the highest-yield source here and the last one added, because
+    # the composite `tenant.wdN/Site` identity did not fit the one-group shape
+    # the other four share. It is where large employers actually live —
+    # Accenture, CommBank, Telstra — and Common Crawl indexes
+    # `*.myworkdayjobs.com` heavily, unlike Lever.
+    #
+    # The URL carries the site path in two different places depending on
+    # whether it is a browser URL (`/en-US/Site`) or an API call
+    # (`/wday/cxs/tenant/Site`), so the pattern skips an optional `wday/cxs`
+    # segment and an optional locale before taking the site.
+    "workday": (
+        ["*.myworkdayjobs.com/*"],
+        re.compile(r"([A-Za-z0-9_-]+)\.(wd\d+)\.myworkdayjobs\.com/"
+                   r"(?:wday/cxs/[^/]+/)?(?:[a-z]{2}-[A-Z]{2}/)?([A-Za-z0-9_-]+)"),
+        lambda m: f"{m.group(1)}.{m.group(2)}/{m.group(3)}",
     ),
 }
 
@@ -116,7 +142,7 @@ async def page_count(client, collection: str, pattern: str) -> int:
 
 
 async def harvest(vendor: str, collections: int) -> set[str]:
-    patterns, token_re = SOURCES[vendor]
+    patterns, token_re, build = SOURCES[vendor]
     found: set[str] = set()
     async with httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=20.0),
                                  headers={"User-Agent": UA}, follow_redirects=True) as client:
@@ -150,8 +176,14 @@ async def harvest(vendor: str, collections: int) -> set[str]:
                         except Exception:
                             continue
                         m = token_re.search(url)
-                        if m and plausible(m.group(1)):
-                            found.add(m.group(1))
+                        if not m:
+                            continue
+                        try:
+                            token = build(m)
+                        except (IndexError, AttributeError):
+                            continue
+                        if token and plausible_token(vendor, token):
+                            found.add(token)
                     print(f"    page {p}: +{len(found)-before} (total {len(found)})",
                           file=sys.stderr)
                     await asyncio.sleep(1.0)  # be a polite client
@@ -170,7 +202,19 @@ ENDPOINTS = {
     "lever": lambda t: f"https://api.lever.co/v0/postings/{t}?mode=json",
     "ashby": lambda t: f"https://api.ashbyhq.com/posting-api/job-board/{t}",
     "smartrecruiters": lambda t: f"https://api.smartrecruiters.com/v1/companies/{t}/postings?limit=100",
+    "workday": lambda t: f"{wd_base(t)}/jobs",
 }
+
+# Workday is the one vendor whose feed is a POST, and the one whose boards are
+# big enough that validating them like the others would be a mistake: asking
+# Accenture for every posting is 100 paged requests, and validation only needs
+# to know the board resolves. One request for 20 postings answers that and
+# gives a location sample to test for Australian roles, which is all `validate`
+# reads. `PAGE` is the vendor's hard cap — asking for more returns nothing.
+def wd_base(token: str) -> str:
+    tenant, wd, site = parse_workday_token(token)
+    return f"https://{tenant}.{wd}.myworkdayjobs.com/wday/cxs/{tenant}/{site}"
+
 
 
 def extract(vendor: str, d):
@@ -194,6 +238,72 @@ def extract(vendor: str, d):
     return None, []
 
 
+async def workday_probe(client, token: str, search: str = "") -> dict | None:
+    """One POST at the vendor's page cap. -> the decoded body, or None."""
+    try:
+        r = await client.post(ENDPOINTS["workday"](token),
+                              json={"limit": 20, "offset": 0, "searchText": search})
+    except Exception:  # noqa: BLE001 - a dead tenant is a settled answer
+        return None
+    if r.status_code != 200:
+        return None
+    try:
+        return r.json()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+async def workday_row(client, token: str) -> dict | None:
+    """Validate one Workday board in two requests.
+
+    Workday cannot be validated the way the other four are, and finding that
+    out is what this function is. The obvious approach — pull a page of
+    postings and test their locations — silently rejects exactly the boards
+    worth having: Accenture's board is 2,000 jobs, an unfiltered sample of 20
+    is whatever Workday sorts first, and the listing endpoint returns
+    `locationsText` empty on some tenants anyway, so every job in the sample
+    parses as location-unknown and the board scores zero Australian roles. It
+    has 372.
+
+    So ask the search endpoint instead of counting a sample. `searchText` is
+    tenant-independent, unlike the location facet GUIDs (`adapters/workday.py`
+    documents that the country GUID filtering CommBank returns nothing for
+    NVIDIA), and the `total` it returns is a whole-board answer rather than a
+    20-row guess.
+
+    It is a keyword match, not a location filter, so the count is an upper
+    bound — a role whose description merely mentions Australia is included.
+    That is the right direction to be loose in: this decides whether a board is
+    worth *fetching*, and the adapter's own location parsing is what decides
+    whether a job reaches the index.
+    """
+    board = await workday_probe(client, token)
+    if not board or not board.get("jobPostings"):
+        return None
+    au = await workday_probe(client, token, "Australia")
+    n_au = (au or {}).get("total", 0)
+    if not n_au:
+        return None
+    titles = [j.get("title", "") for j in (au or {}).get("jobPostings", [])]
+    au_data = [t for t in titles if DATA_RE.search(t or "")]
+    return {
+        "ats_vendor": "workday",
+        "board_token": token,
+        "board_name": "",
+        "n_jobs": board.get("total", 0),
+        "n_au": n_au,
+        "au_ratio": round(n_au / max(board.get("total", 0), 1), 3),
+        # Of the AU sample, not the AU total — the same 20-row limit applies,
+        # so this undercounts a big board's data roles. It orders the adoption
+        # list; it is not a measurement.
+        "n_au_data": len(au_data),
+        "sample_au_role": (au_data[0] if au_data else (titles[0] if titles else ""))[:70],
+        "board_url": f"https://{token.split('.')[0]}."
+                     f"{token.split('.')[1].split('/')[0]}.myworkdayjobs.com/"
+                     f"{token.split('/', 1)[1]}",
+    }
+
+
 DATA_RE = re.compile(
     r"data scien|machine learn|analytics|analyst|data engineer|research scien"
     r"|decision scien|quantitat|\bML\b|\bAI\b", re.I)
@@ -206,18 +316,34 @@ async def validate(vendor: str, tokens: list[str], concurrency: int = 8) -> list
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(40.0, connect=15.0),
                                  headers={"User-Agent": UA}, follow_redirects=True) as client:
-        async def one(token: str):
+        def tick():
+            """Progress, shared by both paths. It used to live only in the
+            non-Workday branch's `finally`, so a Workday sweep — the slowest of
+            the lot, two POSTs per token over thousands of tokens — printed
+            nothing at all for a quarter of an hour and was indistinguishable
+            from a hang."""
             nonlocal done
+            done += 1
+            if done % 250 == 0:
+                print(f"    validated {done}/{len(tokens)} "
+                      f"({len(rows)} live boards)", file=sys.stderr)
+
+        async def one(token: str):
             async with sem:
+                if vendor == "workday":
+                    try:
+                        row = await workday_row(client, token)
+                    finally:
+                        tick()
+                    if row:
+                        rows.append(row)
+                    return
                 try:
                     r = await client.get(ENDPOINTS[vendor](token))
                 except Exception:
                     return
                 finally:
-                    done += 1
-                    if done % 250 == 0:
-                        print(f"    validated {done}/{len(tokens)} "
-                              f"({len(rows)} live boards)", file=sys.stderr)
+                    tick()
                 if r.status_code != 200:
                     return
                 try:
@@ -238,7 +364,7 @@ async def validate(vendor: str, tokens: list[str], concurrency: int = 8) -> list
                 "board_name": name or "",
                 "n_jobs": len(jobs),
                 "n_au": len(au),
-                "au_ratio": round(len(au) / len(jobs), 3),
+                "au_ratio": round(len(au) / len(jobs), 3),  # of the sample
                 "n_au_data": len(au_data),
                 "sample_au_role": (au_data[0] if au_data else au[0][0])[:70],
                 "board_url": ENDPOINTS[vendor](token),
@@ -326,11 +452,6 @@ async def main() -> int:
         if p.exists():
             allrows += json.loads(p.read_text())
 
-    # Greenhouse/Ashby/SmartRecruiters resolve tokens case-insensitively, so the
-    # crawl yields "OpenAI" and "openai" as separate candidates for one board.
-    # Lever does NOT (jobs.lever.co/Zeller resolves, /zeller 404s), so its
-    # tokens must keep their case and stay distinct.
-    CASE_INSENSITIVE = {"greenhouse", "ashby", "smartrecruiters"}
     best: dict[tuple, dict] = {}
     for r in allrows:
         tok = r["board_token"]
