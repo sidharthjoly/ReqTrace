@@ -14,9 +14,31 @@ from __future__ import annotations
 
 import sqlite3
 
-# How long after a sweep a board counts as stale. The schedule is daily, so a
-# board unseen for two days has missed one — that is a real signal, not jitter.
-STALE_HOURS = 48
+# How long after a sweep a board counts as stale.
+#
+# This has been re-derived twice, and both times because the *schedule* changed
+# shape rather than because the number was wrong.
+#
+# It began at 48 hours, on the reasoning that a daily sweep means a board
+# unseen for two days has missed one. `--budget` broke that: the sweep
+# deliberately fetches only the stalest N boards and lets the rest wait, so a
+# board waiting its turn is not a fault. Tiering broke it again, and harder —
+# boards now carry *different* target intervals (12h for the boards that post
+# Australian data roles, a week for the tail), so there is no single correct
+# threshold at all.
+#
+# 96 hours is the cold tier's 72-hour interval plus margin, which makes this
+# number mean one specific thing: **a board nothing has fetched in four days,
+# which not even the slowest tier can explain.** It will not catch a hot board
+# that quietly died yesterday.
+#
+# That is a real gap and it is survivable, because it is not the primary
+# signal. `summary()` also reports `last_run` (the schedule stopping shows up
+# there immediately) and `failed`/`incomplete` (a board breaking shows up
+# there regardless of tier). Closing the gap properly means recording each
+# board's target interval on its `board_runs` row and comparing per-board in
+# SQL — worth doing when the runs page next gets attention.
+STALE_HOURS = 96
 
 # The four places these two dialects actually differ for these queries. Kept as
 # a lookup rather than an ORM because `store.py` already branches inline on

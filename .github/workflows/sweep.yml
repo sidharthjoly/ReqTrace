@@ -11,15 +11,29 @@ name: Sweep and publish
 
 on:
   schedule:
-    # 19:30 UTC = 05:30 in Sydney during AEST (06:30 during AEDT — GitHub cron
-    # has no timezone, and an hour of drift does not matter for a daily diff).
-    - cron: "30 19 * * *"
+    # Every four hours. `stalest` ranks boards by how overdue they are against
+    # their *own* interval, so a run fetches only what is genuinely due — the
+    # ~190 boards that post Australian data roles every 6h, the tail every 3
+    # days — and the extra runs cost roughly what the hot tier costs rather
+    # than a multiple of the whole index.
+    #
+    # Running more often than the shortest interval is deliberate: it decouples
+    # "when a board becomes due" from "when a run happens", so a board due at
+    # 06:00 waits at most 4 hours rather than until the next daily slot.
+    #
+    # 19:30 UTC = 05:30 in Sydney during AEST, so the original nightly slot is
+    # still one of the six and the morning view is unchanged.
+    - cron: "30 3,7,11,15,19,23 * * *"
   workflow_dispatch:
     inputs:
       max_boards:
         description: "Cap boards per vendor (0 = all). Use a small number to test."
         required: false
         default: "0"
+      budget:
+        description: "Cap on boards per run (0 = every board that is due)."
+        required: false
+        default: "400"
       publish:
         description: "Push the export to gh-pages"
         type: boolean
@@ -28,15 +42,26 @@ on:
 concurrency:
   # Never two sweeps at once: they would interleave writes into the same
   # database and each would see a half-updated open set to diff against.
-  group: sweep
+  # Shared with crawl.yml for the same reason — see the note there.
+  group: reqtrace-pipeline
   cancel-in-progress: false
 
 jobs:
   sweep:
     runs-on: ubuntu-latest
-    # A full sweep is 357 boards across seven vendors; the local one takes
-    # hours. GitHub's ceiling is 6h, which this must stay under.
-    timeout-minutes: 330
+    # Measured on real runs, not guessed: 357 boards took 134-164 minutes on
+    # this runner, so ~25.5s a board. (A local measurement said 59s; GitHub's
+    # network to these vendors is about 2.3x better than a laptop's.)
+    #
+    # Per-job cost also varies ~4x between Workday tenants (0.060, 0.097 and
+    # 0.241 s/job on three boards over 500 jobs) and does not track board size
+    # or AU-role count — the fastest had the most Australian roles, the slowest
+    # the fewest. It is tenant latency, so no precise model is worth trusting.
+    #
+    # Hence --budget is a generous cap rather than a tuning knob (boards that
+    # are not due are skipped, so a spare budget costs nothing) and --deadline
+    # does the bounding. A typical run is ~170 due boards, about 75 minutes.
+    timeout-minutes: 210
     permissions:
       contents: write      # pushes the export to the gh-pages branch
 
@@ -64,13 +89,21 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen
 
+      # Adoption deliberately does NOT happen here. It writes
+      # `data/discovered_boards.csv` and then marks those findings adopted in
+      # the database, so running it on a runner that throws its checkout away
+      # would persist the "already adopted" flag while discarding the only
+      # record of what was adopted — the board would never be offered again and
+      # never be swept. `crawl.yml` runs it and commits the file in one step.
       - name: Sweep every board
         id: sweep
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           uv run python -m reqtrace.run --vendor all \
-            --max-boards "${{ inputs.max_boards || 0 }}"
+            --max-boards "${{ inputs.max_boards || 0 }}" \
+            --budget "${{ inputs.budget || 400 }}" \
+            --deadline 180
 
       - name: Build the static export
         env:

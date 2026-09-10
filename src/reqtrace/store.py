@@ -232,6 +232,32 @@ class Store:
         )
         return {r[0]: r[1] for r in cur.fetchall()}
 
+    def last_attempted(self, vendor: str) -> dict[str, str]:
+        """board_token -> when a sweep last *tried* this board, success or not.
+
+        Feeds the oldest-first sweep order, and "tried" rather than "succeeded"
+        is the whole point. Ranking on successful fetches looks obviously
+        right and starves the sweep: a board that never completes has no
+        successful run, so it sorts ahead of every board that does, gets picked
+        first every single night, spends its minutes, fails again, and sorts
+        first again tomorrow. Accenture's Workday tenant is 2,000 jobs and did
+        not finish in twelve minutes of measurement — a handful like it would
+        permanently occupy the front of the budget while the boards that
+        actually succeed rotate ever more slowly.
+
+        Ranking on attempts fixes both directions at once: a board that just
+        cost us minutes goes to the back whether or not it worked, and a board
+        nobody has ever tried is still missing from this dict, so `stalest`
+        still puts a newly adopted board first.
+        """
+        cur = self.conn.cursor()
+        cur.execute(
+            f"SELECT board_token, max(fetched_at) FROM board_runs "
+            f"WHERE ats_vendor={self.ph} GROUP BY board_token",
+            (vendor,),
+        )
+        return {r[0]: r[1] for r in cur.fetchall()}
+
     def hashes(self, vendor: str, token: str) -> dict[str, str]:
         cur = self.conn.cursor()
         cur.execute(
