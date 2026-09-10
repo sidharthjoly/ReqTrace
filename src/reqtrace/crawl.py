@@ -294,6 +294,125 @@ def score_link(url: str, anchor: str = "", *, origin: str = "") -> int:
 
 
 # ---------------------------------------------------------------------------
+# Seed expansion — the "infinitely" in an infinite crawl
+# ---------------------------------------------------------------------------
+# Everything above is deliberately finite: `score_link` returns 0 the moment a
+# link leaves the employer's own domain, which is what stops a careers crawl
+# turning into a web crawl. That bound is correct per-employer and wrong for
+# the crawl as a whole — it means the run can only ever discover boards for the
+# domains it was handed on the command line, so coverage is capped by a CSV.
+#
+# This lifts the bound in exactly one direction. It does not follow off-site
+# links in general; it harvests *employer homepages* — the bare-root outbound
+# links that "our customers", "portfolio", "partners" and "who we work with"
+# pages are made of. Those pages are the densest list of company domains on the
+# open web, and one of them is worth more to this index than a thousand more
+# pages of any single company's site.
+#
+# A harvested domain becomes a new seed at depth 0, and from there the ordinary
+# focused rules apply again: score the careers links, fingerprint the page,
+# stop the host on the first hit. The crawl is unbounded in the number of
+# employers and still tightly bounded per employer, which is the only shape in
+# which "never stops" is also "never rude".
+
+#: Hosts that are never an employer we want to seed from. Social and CDN hosts
+#: dominate outbound links on every page on the web; the ATS hosts are already
+#: handled by the fingerprints, so following them would spend the budget
+#: re-reading boards we can identify from the HTML we already have.
+_NEVER_SEED = re.compile(
+    r"(?:^|\.)(?:"
+    r"facebook|twitter|x|instagram|linkedin|youtube|tiktok|pinterest|reddit"
+    r"|github|gitlab|medium|substack|wordpress|blogspot|wixsite|squarespace"
+    r"|google|googleapis|gstatic|doubleclick|googletagmanager|bing|yahoo"
+    r"|amazonaws|cloudfront|akamai|cloudflare|fastly|jsdelivr|unpkg|cdn"
+    r"|apple|microsoft|office|adobe|mozilla|w3|schema|creativecommons"
+    r"|greenhouse|lever|ashbyhq|smartrecruiters|myworkdayjobs|myworkdaysite"
+    r"|oraclecloud|eightfold|workable|teamtailor|avature|icims|taleo"
+    r"|successfactors|sapsf|bamboohr|jobvite|recruitee|personio|pinpointhq"
+    r"|seek|indeed|glassdoor|ziprecruiter|monster|jora|adzuna"
+    r"|wikipedia|wikimedia|archive|doi|arxiv|nih|who"
+    r"|paypal|stripe|shopify|mailchimp|hubspot|salesforce|zendesk|intercom"
+    r"|gov|edu|mil"
+    r")\.", re.I)
+
+#: Anchor text on the pages that are worth harvesting outbound links from. A
+#: bare-root link inside a "customers" grid is a company; the same link in a
+#: privacy policy is a data processor.
+_PORTFOLIO_WORDS = (
+    "customer", "client", "portfolio", "partner", "member", "company",
+    "companies", "brand", "invest", "backed", "startup", "our work",
+    "case stud", "who we work", "trusted by", "alumni", "network",
+)
+
+
+def _is_root_ish(url: str) -> bool:
+    """A homepage, or near enough. `acme.com`, `acme.com/`, `acme.com/en` —
+    but not `acme.com/blog/2024/why-we-hire`."""
+    p = urllib.parse.urlsplit(url)
+    path = p.path.strip("/")
+    return not path or (len(path) <= 5 and "/" not in path)
+
+
+def seedable_domain(url: str, *, origin: str = "") -> str | None:
+    """-> the registrable domain worth seeding from this link, or None.
+
+    Conservative on purpose. The failure mode being avoided is a crawler that
+    wanders into a news site and spends a week there, so the test is narrow:
+    off-site, a homepage rather than an article, and not one of the hosts that
+    appears in the footer of every page on the internet.
+    """
+    if not url:
+        return None
+    host = host_of(url)
+    if not host or (origin and same_site(url, origin)):
+        return None
+    if not _is_root_ish(url):
+        return None
+    domain = registrable(url)
+    # `_NEVER_SEED` matches on a dot boundary, so pad both ends to catch a
+    # bare `github.com` as readily as `www.github.com`.
+    if _NEVER_SEED.search(f".{host}."):
+        return None
+    if len(domain) < 4 or "." not in domain:
+        return None
+    return domain
+
+
+def harvest_seeds(html: str, base: str, *, limit: int = 60) -> list[str]:
+    """Employer domains linked from this page, best-effort and deduplicated.
+
+    `limit` is a real bound, not a formality: a directory page can carry
+    thousands of outbound links, and adopting all of them in one go would let a
+    single page dictate the shape of the frontier for days.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for url, _anchor in extract_links(html, base):
+        domain = seedable_domain(url, origin=base)
+        if domain and domain not in seen:
+            seen.add(domain)
+            out.append(domain)
+            if len(out) >= limit:
+                break
+    return out
+
+
+def looks_like_a_directory(html: str, base: str) -> bool:
+    """Is this a page whose whole purpose is listing other companies?
+
+    Cheap heuristic, and it only gates *expansion*, never ingestion — a false
+    positive costs a handful of polite requests to companies that turn out not
+    to be hiring, and a false negative costs a page of discovery we would have
+    got anyway from the next portfolio page.
+    """
+    head = html[:4000].lower()
+    if any(w in head for w in _PORTFOLIO_WORDS):
+        return True
+    path = urllib.parse.urlsplit(base).path.lower()
+    return any(w in path for w in _PORTFOLIO_WORDS)
+
+
+# ---------------------------------------------------------------------------
 # ATS fingerprints — the payload
 # ---------------------------------------------------------------------------
 
@@ -416,6 +535,21 @@ FINGERPRINTS: tuple[Fingerprint, ...] = (
 #: Vendors `discover_boards.py validate` can check against a public JSON feed.
 VALIDATABLE = ("greenhouse", "lever", "ashby", "smartrecruiters")
 
+#: Vendors whose boards resolve regardless of token case, so two spellings of
+#: one token are one board and must be deduplicated to a single fetch.
+#:
+#: **Lever is deliberately absent**: `jobs.lever.co/Zeller` resolves and
+#: `/zeller` 404s, so folding case there would silently drop real boards.
+#:
+#: Workday was added on evidence, not assumption. A Common Crawl sweep returned
+#: 720 validated boards of which 216 (30%) were case variants of another —
+#: `cba.wd3/CommBank_Careers` and `cba.wd3/commbank_careers` both answering
+#: with the same 220 jobs. Probing directly, `cba.wd3/cOmMbAnK_cArEeRs` also
+#: returns that board while `cba.wd3/NotARealSite` 404s, so the resolution is
+#: genuinely case-insensitive rather than two sites that happen to match. Left
+#: out of this set, every such employer is fetched twice on every sweep.
+CASE_INSENSITIVE = frozenset({"greenhouse", "ashby", "smartrecruiters", "workday"})
+
 #: Vendors with an adapter, so a found token is directly ingestable.
 INGESTABLE = {f.vendor for f in FINGERPRINTS if f.ingestable}
 
@@ -436,6 +570,23 @@ SKIP_TOKENS = {
 _HEXISH = re.compile(r"^[0-9a-f]{16,}$", re.I)
 
 
+#: Right-hand halves of a composite identity that are not a site path.
+#:
+#: Deliberately *not* `SKIP_TOKENS`, and the difference is the whole point: that
+#: list rejects "careers" and "jobs", which are among the commonest real Workday
+#: site paths (`foo.wd1/Careers` is a board; 150 of them turned up in one Common
+#: Crawl sweep). Reusing it here would throw away the boards we came for. So
+#: this rejects only what cannot be a site: well-known files at the host root,
+#: and bare locale segments the URL pattern's `[a-z]{2}-[A-Z]{2}` form misses
+#: because they are lowercased.
+_NOT_A_SITE = {
+    "robots", "robots.txt", "llms", "llms.txt", "sitemap", "sitemap.xml",
+    "favicon", "favicon.ico", "index", "index.html", "wday", "cxs",
+    "null", "undefined",
+}
+_LOCALE_ONLY = re.compile(r"^[a-z]{2}(?:[-_][a-z]{2})?$", re.I)
+
+
 def plausible_token(vendor: str, token: str | None) -> bool:
     """Cheap junk filter. Validation against the vendor's feed is what really
     decides — this only avoids spending a request on an obvious asset path."""
@@ -444,7 +595,15 @@ def plausible_token(vendor: str, token: str | None) -> bool:
     if vendor in ("workday", "oracle", "eightfold"):
         # Composite identities: shape is the check, and both halves matter.
         left, _, right = token.partition("/")
-        return bool(left and right) and len(token) <= 120
+        if not (left and right) or len(token) > 120:
+            return False
+        # A URL-index sweep of `*.myworkdayjobs.com/*` sees every host's
+        # `robots.txt` before it sees any board, so without this a third of the
+        # haul is `tenant.wdN/robots` — 1,611 of 4,894 in the first sweep, each
+        # of which would cost two validation requests to disprove.
+        site = right.split("/")[0].lower()
+        return site not in _NOT_A_SITE and not _LOCALE_ONLY.match(site) \
+            and not site.isdigit()
     t = token.lower()
     return (
         t not in SKIP_TOKENS
@@ -538,6 +697,8 @@ class Crawler:
         delay: float = MIN_HOST_DELAY,
         obey_robots: bool = True,
         use_sitemaps: bool = True,
+        expand: bool = False,
+        max_seeds: int = 0,
         on_event: Callable[[str, str], None] | None = None,
     ) -> None:
         self.client = client
@@ -548,7 +709,16 @@ class Crawler:
         self.delay = delay
         self.obey_robots = obey_robots
         self.use_sitemaps = use_sitemaps
+        self.expand = expand
+        self.max_seeds = max_seeds
         self._log = on_event or (lambda kind, msg: None)
+        #: Employer domains harvested from directory pages this lap. The
+        #: crawler does not enqueue these itself; the caller does, and whether
+        #: a domain is *already* known is settled there by the
+        #: `ON CONFLICT DO NOTHING` in `Frontier.add` — exact, free, and
+        #: without loading every domain ever seen into memory on every lap of a
+        #: crawl designed to run for weeks.
+        self.new_seeds: set[str] = set()
 
         self._frontier: list[_Task] = []
         self._seq = 0
@@ -565,6 +735,10 @@ class Crawler:
         self._found_keys: set[tuple[str, str, str]] = set()
         self.pages = 0
         self.stats: Counter[str] = Counter()
+        #: URLs actually fetched this lap. The daemon marks exactly these done
+        #: and releases the rest of the batch, so a lap that runs out of budget
+        #: hands its unspent URLs back rather than silently dropping them.
+        self.visited: set[str] = set()
 
     # -- frontier ----------------------------------------------------------
 
@@ -689,11 +863,15 @@ class Crawler:
             host.next_ok = time.monotonic() + host.delay
             host.pages += 1
             self.pages += 1
+            self.visited.add(task.url)
             status, html = await self._get(task.url)
 
         self.stats[f"status_{status}"] += 1
         if status != 200 or not html:
             return
+
+        if self.expand:
+            self._harvest(html, task)
 
         hits = find_boards(html, url=task.url, domain=task.seed or registrable(task.url))
         if hits:
@@ -720,6 +898,31 @@ class Crawler:
         if not strong and task.depth == 0 and not host.probed_fallbacks:
             host.probed_fallbacks = True
             await self._fallbacks(hostname, task)
+
+    def _harvest(self, html: str, task: _Task) -> None:
+        """Pull employer domains off a directory page into `new_seeds`.
+
+        Gated on `looks_like_a_directory` rather than run over every page: on
+        an ordinary marketing page the outbound root links are the footer's
+        social and vendor badges, which `seedable_domain` mostly rejects but at
+        the cost of a regex per link per page. Checking the page once is
+        cheaper than checking every link on every page.
+        """
+        if self.max_seeds and len(self.new_seeds) >= self.max_seeds:
+            return
+        if not looks_like_a_directory(html, task.url):
+            return
+        found = 0
+        for domain in harvest_seeds(html, task.url):
+            if domain in self.new_seeds:
+                continue
+            self.new_seeds.add(domain)
+            found += 1
+            if self.max_seeds and len(self.new_seeds) >= self.max_seeds:
+                break
+        if found:
+            self.stats["seeds_harvested"] += found
+            self._log("seeds", f"{found} new employer domains <- {task.url}")
 
     async def _fallbacks(self, hostname: str, task: _Task) -> None:
         for path in WELL_KNOWN_PATHS:
@@ -786,6 +989,35 @@ class Crawler:
 
         await asyncio.gather(*(worker() for _ in range(self.concurrency)))
         return self.findings
+
+    # -- lap interface (the database-backed daemon) ------------------------
+
+    def pending(self) -> list[tuple[str, int, int, str]]:
+        """-> [(url, score, depth, seed)] still queued when the lap ended.
+
+        The score is recovered from the heap priority rather than stored twice:
+        `enqueue` pushes `-(score - 8 * depth)`, so this inverts it. Keeping
+        one source of truth matters because the daemon writes these scores back
+        to the database, and a copy that drifted from the priority would make
+        the persisted queue order disagree with the in-memory one.
+        """
+        return [(t.url, -t.priority + 8 * t.depth, t.depth, t.seed)
+                for t in self._frontier]
+
+    def load_hosts(self, hosts: dict[str, tuple[int, bool]]) -> None:
+        """Carry per-host page counts and exhaustion across laps.
+
+        Without this every lap starts each host at zero pages, so `max_per_host`
+        stops being a budget and becomes a per-lap rate limit — a daemon would
+        crawl twelve pages of the same site every lap, forever.
+        """
+        for hostname, (pages, exhausted) in hosts.items():
+            h = self.hosts.setdefault(hostname, _Host(delay=self.delay))
+            h.pages = max(h.pages, pages)
+            h.exhausted = h.exhausted or exhausted
+
+    def host_rows(self) -> dict[str, tuple[int, bool, float]]:
+        return {h: (st.pages, st.exhausted, st.delay) for h, st in self.hosts.items()}
 
     # -- resumable state ---------------------------------------------------
 
