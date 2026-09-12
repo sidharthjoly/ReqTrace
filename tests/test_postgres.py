@@ -291,3 +291,47 @@ def test_a_dead_connection_is_recognised_whatever_the_error_class(store):
     store.conn.close()
     assert store._dropped(psycopg.errors.IdleInTransactionSessionTimeout("gone"))
     store.reopen()
+
+
+# -- the frontier surviving a dropped connection ---------------------------
+
+def test_frontier_operations_reconnect_after_the_server_hangs_up(store):
+    """A crawl lap spends minutes crawling between its last query and its next,
+    and a serverless compute suspends on inactivity -- so the write-back at the
+    end of a lap can meet a connection the server already closed. Store.reconcile
+    has survived that since the first Postgres sweep; the frontier did not, and
+    a scheduled crawl died on AdminShutdown partway through a lap."""
+    from reqtrace.frontier import Frontier
+
+    f = Frontier(store)
+    f.init_schema()
+    # The shared fixture truncates jobs/board_runs/companies, not these -- and
+    # this test ends by claiming rows, so without a reset a second run starts
+    # with everything already 'claimed' and no pending rows at all.
+    f.conn.cursor().execute("TRUNCATE crawl_frontier, crawl_hosts, crawl_findings")
+    f.conn.commit()
+
+    f.add([("https://a.com/1", "a.com", 100, 0, "a.com")])
+
+    store.conn.close()                      # what AdminShutdown leaves behind
+    assert f.count("pending") == 1          # reconnects rather than raising
+
+    store.conn.close()
+    assert f.add([("https://a.com/2", "a.com", 100, 0, "a.com")]) == 1
+
+    store.conn.close()
+    assert len(f.claim(10)) == 2
+
+    # A real error is still a real error, not something to retry blindly. (Not
+    # a malformed row: `add` canonicalises and skips what it cannot fetch, so a
+    # junk URL is dropped by design rather than raised.)
+    with pytest.raises(AttributeError):
+        f.record([object()])
+    assert not store.conn.closed, "a non-connection error must not reconnect"
+
+    # ...and the retry is genuinely once, not a loop: a connection that cannot
+    # be re-established has to surface rather than spin.
+    store.conn.close()
+    store.dsn = "postgresql://nobody@127.0.0.1:1/nope"
+    with pytest.raises(Exception):
+        f.count("pending")

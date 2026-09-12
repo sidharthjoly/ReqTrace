@@ -61,6 +61,12 @@ jobs:
     # Hence --budget is a generous cap rather than a tuning knob (boards that
     # are not due are skipped, so a spare budget costs nothing) and --deadline
     # does the bounding. A typical run is ~170 due boards, about 75 minutes.
+    # 210 -- and --deadline has to stay well under it rather than near it. The
+    # deadline only stops boards *starting*: with CONCURRENCY=4 four boards can
+    # begin one second before it and each run the 25-minute BOARD_TIMEOUT, and
+    # the export and publish steps still have to fit afterwards. At --deadline
+    # 180 that totals ~210, and the first full-budget run was duly cancelled on
+    # the wire at exactly 210 minutes. 140 leaves about 25 minutes of slack.
     timeout-minutes: 210
     permissions:
       contents: write      # pushes the export to the gh-pages branch
@@ -103,7 +109,7 @@ jobs:
           uv run python -m reqtrace.run --vendor all \
             --max-boards "${{ inputs.max_boards || 0 }}" \
             --budget "${{ inputs.budget || 400 }}" \
-            --deadline 180
+            --deadline 140
 
       - name: Build the static export
         env:

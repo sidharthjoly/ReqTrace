@@ -30,6 +30,7 @@ and Postgres share, with `ph` for the one placeholder difference.
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -84,6 +85,33 @@ CREATE TABLE IF NOT EXISTS crawl_findings (
 """
 
 
+def reconnecting(fn):
+    """Retry once against a fresh connection if the server hung up.
+
+    `Store.reconcile` has had this since the first Postgres sweep; the frontier
+    did not, and a crawl lap is exactly as exposed. A serverless compute
+    suspends on inactivity, and a lap spends minutes crawling between its last
+    query and its next, so the write-back at the end can meet a connection Neon
+    closed with AdminShutdown partway through. Unguarded that ends the process,
+    which for a daemon meant to run for weeks is the whole ballgame.
+
+    Safe to retry because every method here is a single committed statement or
+    an idempotent upsert: re-running one after a failure either repeats work
+    that conflicts harmlessly or does the work that never landed.
+    """
+    @functools.wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return fn(self, *args, **kwargs)
+        except Exception as exc:  # noqa: BLE001 - re-raised unless it is a drop
+            if not self.store._dropped(exc):
+                raise
+            self.store.reopen()
+            self.rebind()
+            return fn(self, *args, **kwargs)
+    return wrapper
+
+
 @dataclass
 class Pending:
     url: str
@@ -135,6 +163,7 @@ class Frontier:
 
     # -- the queue ---------------------------------------------------------
 
+    @reconnecting
     def add(self, rows: list[tuple[str, str, int, int, str]]) -> int:
         """Enqueue [(url, host, score, depth, seed)]. Already-known URLs are
         dropped by the primary key — that conflict *is* the seen-set check, so
@@ -184,6 +213,7 @@ class Frontier:
         n = cur.rowcount
         return n if n and n > 0 else 0
 
+    @reconnecting
     def claim(self, limit: int, *, max_per_host: int = 12) -> list[Pending]:
         """The next batch to crawl: highest-scoring pending URLs whose host is
         neither exhausted nor over its page cap.
@@ -222,6 +252,7 @@ class Frontier:
             self._end_read()   # nothing claimed still means a SELECT ran
         return out
 
+    @reconnecting
     def finish(self, urls: list[str], state: str = "done") -> None:
         if not urls:
             return
@@ -235,6 +266,7 @@ class Frontier:
         )
         self.conn.commit()
 
+    @reconnecting
     def release(self, urls: list[str]) -> None:
         """Put claimed-but-unvisited URLs back. The daemon calls this on a
         clean shutdown so an interrupted lap costs nothing at all."""
@@ -249,6 +281,7 @@ class Frontier:
         )
         self.conn.commit()
 
+    @reconnecting
     def requeue_stale_claims(self, hours: int = 6) -> int:
         """Reclaim rows a killed process left claimed forever.
 
@@ -277,6 +310,7 @@ class Frontier:
         self.conn.commit()
         return n
 
+    @reconnecting
     def count(self, state: str | None = None) -> int:
         cur = self.conn.cursor()
         if state:
@@ -291,6 +325,7 @@ class Frontier:
 
     # -- hosts -------------------------------------------------------------
 
+    @reconnecting
     def host_state(self, hosts: list[str]) -> dict[str, tuple[int, bool]]:
         """host -> (pages already crawled, exhausted). Carries the per-host
         budget across restarts, so a daemon cannot spend twelve pages a lap on
@@ -306,6 +341,7 @@ class Frontier:
         self._end_read()
         return out
 
+    @reconnecting
     def save_hosts(self, hosts: dict[str, tuple[int, bool, float]]) -> None:
         """Persist {host: (pages, exhausted, delay)}. Pages are written as an
         absolute value, not an increment: the crawler was handed the stored
@@ -326,6 +362,7 @@ class Frontier:
                               float(delay), now))
         self.conn.commit()
 
+    @reconnecting
     def retire_exhausted(self, hosts: list[str] | None = None) -> int:
         """Drop pending URLs on hosts that are already done.
 
@@ -358,6 +395,7 @@ class Frontier:
 
     # -- findings ----------------------------------------------------------
 
+    @reconnecting
     def record(self, findings) -> int:
         """Log board tokens found. New rows land with `adopted_at` NULL, which
         is what `pending_adoption` looks for."""
@@ -379,6 +417,7 @@ class Frontier:
         self.conn.commit()
         return n
 
+    @reconnecting
     def pending_adoption(self, ingestable_only: bool = True,
                          unadopted_only: bool = False) -> list[dict]:
         """Findings to offer to ingestion.
@@ -415,6 +454,7 @@ class Frontier:
         self._end_read()
         return out
 
+    @reconnecting
     def mark_adopted(self, pairs: list[tuple[str, str, str]]) -> None:
         if not pairs:
             return
@@ -428,6 +468,7 @@ class Frontier:
                 (now, vendor, token, seed))
         self.conn.commit()
 
+    @reconnecting
     def stats(self) -> dict:
         cur = self.conn.cursor()
         out: dict[str, int] = {}
