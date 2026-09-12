@@ -88,6 +88,12 @@ DIRECTORY_SEEDS = [
     # Tech Council, whose member list is the line above. Checked 2026-09-10.
 ]
 
+#: Rest longer than this and the crawler disconnects while it waits, so a
+#: serverless compute can suspend. Below it the reconnect churn costs more than
+#: the idle connection does — and a suspend timeout is typically five minutes
+#: anyway, so a short rest would never have suspended regardless.
+RELEASE_DB_AFTER = 60.0
+
 _STOP = False
 
 
@@ -293,7 +299,22 @@ async def forever(args) -> int:
                 # Never sleep past the deadline: the rest interval is politeness
                 # between laps, not a reason to hold a runner open doing nothing.
                 rest = min(rest, max(0.0, deadline - time.monotonic()))
-            await asyncio.sleep(rest)
+            # Let go of the database across a long rest. A serverless Postgres
+            # only suspends its compute once nothing is connected, so a process
+            # that runs for weeks holding one connection bills — or spends its
+            # free-tier compute-hour budget on — every hour it is alive rather
+            # than every hour it is working. At a 6-minute rest that is the
+            # difference between ~180 compute-hours a month and under ten.
+            #
+            # Nothing is lost by dropping it: every Frontier method commits as
+            # it goes, so there is never uncommitted state to carry across.
+            if rest >= RELEASE_DB_AFTER:
+                store.close()
+                await asyncio.sleep(rest)
+                store.reopen()
+                f.rebind()
+            else:
+                await asyncio.sleep(rest)
     finally:
         mins = (time.monotonic() - started) / 60
         print(f"\n{lap} laps in {mins:.1f}m — {totals['fetched']} pages, "

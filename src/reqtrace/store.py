@@ -141,6 +141,7 @@ class Store:
             self.backend = "postgres"
         else:
             path = sqlite_path or DEFAULT_SQLITE
+            self.sqlite_path = Path(path)
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             self.conn = sqlite3.connect(path, timeout=30)
             # A scheduled sweep holds write transactions for minutes at a time,
@@ -217,9 +218,47 @@ class Store:
     def close(self) -> None:
         self.conn.close()
 
+    def reopen(self) -> None:
+        """Reconnect after a deliberate `close()`.
+
+        Exists for the always-on crawler. A serverless Postgres only suspends
+        its compute once nothing is connected, so a process that holds one
+        connection for days keeps the compute — and the bill, or the free
+        tier's compute-hour budget — running the entire time, however little
+        work it is actually doing. Dropping the connection across a long idle
+        stretch and picking it up again is the difference between a crawler
+        that costs what it uses and one that costs wall-clock time.
+        """
+        if self.backend == "postgres":
+            import psycopg
+
+            self.conn = psycopg.connect(self.dsn)
+        else:
+            self.conn = sqlite3.connect(self.sqlite_path, timeout=30)
+            self.conn.execute("PRAGMA journal_mode=WAL")
+            self.conn.execute("PRAGMA busy_timeout=30000")
+
     def _now(self):
         now = utcnow()
         return now if self.backend == "postgres" else now.isoformat()
+
+    def _end_read(self) -> None:
+        """End the transaction a SELECT opened.
+
+        psycopg does not autocommit, so *reading* starts a transaction that
+        stays open until something ends it. That is invisible right up until a
+        read is followed by a long wait: Neon sets
+        `idle_in_transaction_session_timeout` to five minutes and kills the
+        connection, and the next query — often many minutes of HTTP later —
+        dies with IdleInTransactionSessionTimeout on a statement that had
+        nothing wrong with it.
+
+        A sweep reads `last_attempted` to plan, then spends the better part of
+        an hour fetching boards before it writes anything, so this is not an
+        edge case for this codebase; it is the normal path.
+        """
+        if self.backend == "postgres":
+            self.conn.rollback()   # read-only: nothing to keep, just end it
 
     # -- reads -------------------------------------------------------------
     def open_jobs(self, vendor: str, token: str) -> dict[str, str]:
@@ -230,7 +269,9 @@ class Store:
             f"AND board_token={self.ph} AND closed_at IS NULL",
             (vendor, token),
         )
-        return {r[0]: r[1] for r in cur.fetchall()}
+        out = {r[0]: r[1] for r in cur.fetchall()}
+        self._end_read()
+        return out
 
     def last_attempted(self, vendor: str) -> dict[str, str]:
         """board_token -> when a sweep last *tried* this board, success or not.
@@ -256,7 +297,9 @@ class Store:
             f"WHERE ats_vendor={self.ph} GROUP BY board_token",
             (vendor,),
         )
-        return {r[0]: r[1] for r in cur.fetchall()}
+        out = {r[0]: r[1] for r in cur.fetchall()}
+        self._end_read()
+        return out
 
     def hashes(self, vendor: str, token: str) -> dict[str, str]:
         cur = self.conn.cursor()
@@ -265,7 +308,9 @@ class Store:
             f"AND board_token={self.ph}",
             (vendor, token),
         )
-        return {r[0]: r[1] for r in cur.fetchall()}
+        out = {r[0]: r[1] for r in cur.fetchall()}
+        self._end_read()
+        return out
 
     # -- writes ------------------------------------------------------------
     def _upsert(self, job: Job, now) -> None:
@@ -295,7 +340,14 @@ class Store:
             return False
         import psycopg
 
-        return isinstance(exc, (psycopg.OperationalError, psycopg.InterfaceError))
+        if isinstance(exc, (psycopg.OperationalError, psycopg.InterfaceError)):
+            return True
+        # A server-side termination does not always arrive as one of those.
+        # An idle-in-transaction timeout is an InternalError, and reading the
+        # class alone let it escape the retry that exists for exactly this.
+        # The connection's own state is the reliable test.
+        return bool(getattr(self.conn, "closed", 0)
+                    or getattr(self.conn, "broken", False))
 
     def _reconnect(self) -> None:
         import psycopg

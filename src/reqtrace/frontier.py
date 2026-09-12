@@ -106,6 +106,14 @@ class Frontier:
         self.ph = store.ph
         self.backend = store.backend
 
+    def rebind(self) -> None:
+        """Pick up the store's connection again after `Store.reopen()`.
+
+        The connection is cached here at construction, so a reopened store
+        would otherwise leave this object holding a closed handle.
+        """
+        self.conn = self.store.conn
+
     def init_schema(self) -> None:
         cur = self.conn.cursor()
         for ddl in (FRONTIER_DDL, HOSTS_DDL, FINDINGS_DDL):
@@ -117,6 +125,13 @@ class Frontier:
     def _now(self):
         now = utcnow()
         return now if self.backend == "postgres" else now.isoformat()
+
+    def _end_read(self) -> None:
+        """End the transaction a SELECT opened -- see `Store._end_read`. A lap
+        reads its host budgets and then crawls for minutes before writing
+        anything back, which is long enough for Neon to kill the connection."""
+        if self.backend == "postgres":
+            self.conn.rollback()
 
     # -- the queue ---------------------------------------------------------
 
@@ -203,6 +218,8 @@ class Frontier:
                 [self._now(), *[p.url for p in out]],
             )
             self.conn.commit()
+        else:
+            self._end_read()   # nothing claimed still means a SELECT ran
         return out
 
     def finish(self, urls: list[str], state: str = "done") -> None:
@@ -268,7 +285,9 @@ class Frontier:
                 (state,))
         else:
             cur.execute("SELECT count(*) FROM crawl_frontier")
-        return cur.fetchone()[0]
+        n = cur.fetchone()[0]
+        self._end_read()
+        return n
 
     # -- hosts -------------------------------------------------------------
 
@@ -283,7 +302,9 @@ class Frontier:
         cur.execute(
             f"SELECT host, pages, exhausted FROM crawl_hosts WHERE host IN ({marks})",
             hosts)
-        return {r[0]: (r[1], bool(r[2])) for r in cur.fetchall()}
+        out = {r[0]: (r[1], bool(r[2])) for r in cur.fetchall()}
+        self._end_read()
+        return out
 
     def save_hosts(self, hosts: dict[str, tuple[int, bool, float]]) -> None:
         """Persist {host: (pages, exhausted, delay)}. Pages are written as an
@@ -389,8 +410,10 @@ class Frontier:
         if unadopted_only:
             sql += " AND adopted_at IS NULL"
         cur.execute(sql + " ORDER BY found_at")
-        return [{"ats_vendor": r[0], "board_token": r[1],
-                 "seed_domain": r[2], "found_on": r[3]} for r in cur.fetchall()]
+        out = [{"ats_vendor": r[0], "board_token": r[1],
+                "seed_domain": r[2], "found_on": r[3]} for r in cur.fetchall()]
+        self._end_read()
+        return out
 
     def mark_adopted(self, pairs: list[tuple[str, str, str]]) -> None:
         if not pairs:
@@ -422,4 +445,5 @@ class Frontier:
         # Never-adopted findings. `adopt` re-checks against the CSV, so this is
         # a floor on the outstanding work, not the exact figure.
         out["never_adopted"] = cur.fetchone()[0]
+        self._end_read()
         return out

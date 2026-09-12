@@ -277,3 +277,18 @@ def test_adoption_folds_case_only_where_the_vendor_does(f, tmp_path, monkeypatch
            for r in _csv.DictReader(csv_path.open())}
     assert ("lever", "Zeller") in got and ("lever", "zeller") in got
     assert len([t for v, t in got if v == "workday"]) == 1
+
+
+def test_the_frontier_survives_the_store_closing_and_reopening(f):
+    """The always-on crawler drops its connection across long rests so a
+    serverless compute can suspend — otherwise a process alive for weeks spends
+    compute-hours on every hour it exists rather than every hour it works.
+
+    Frontier caches the connection at construction, so it has to be told."""
+    f.add(rows("https://a.com/1"))
+    f.store.close()
+    f.store.reopen()
+    f.rebind()
+    assert f.count("pending") == 1
+    assert f.add(rows("https://a.com/2")) == 1     # writes work after reopen
+    assert len(f.claim(10)) == 2

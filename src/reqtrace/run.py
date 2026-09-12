@@ -309,7 +309,19 @@ async def sweep(vendor: str, tokens: list[str], store: Store,
                         ats_vendor=vendor, board_token=token, complete=False,
                         error=f"exceeded {BOARD_TIMEOUT / 60:.0f}m board timeout")
 
-        results = await asyncio.gather(*(one(t) for t in tokens))
+        # Let go of the database for the fetch. Nothing in `one` touches it,
+        # and this phase is long -- a 400-board Workday pass measured 53
+        # minutes before it wrote a single row. Holding the connection across
+        # that keeps a serverless compute awake for the whole of it, which on a
+        # free tier is compute-hours spent waiting on somebody else's HTTP.
+        #
+        # It also removes the failure this code was fixed for twice over: a
+        # connection that is not held cannot be killed for being idle.
+        store.close()
+        try:
+            results = await asyncio.gather(*(one(t) for t in tokens))
+        finally:
+            store.reopen()
         snaps = [s for s in results if s is not None]
         skipped = len(results) - len(snaps)
 

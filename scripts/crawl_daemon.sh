@@ -56,15 +56,24 @@ echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) crawler starting ===" >> "$LOG"
 cd "$ROOT" || exit 1
 
 # No --laps and no --minutes: this is the mode `crawl_forever.py` was written
-# for. `--rest 45` is deliberately slower than the CI crawl's 20s, because this
-# one has all day and nothing to prove — the politeness rules underneath
-# (robots.txt with Crawl-delay, one request at a time per host, 12 pages per
-# host ever) do the real work, and a longer rest simply spreads the load
-# further. REQTRACE_CRAWL_ARGS narrows it for a smoke test without editing the
-# plist.
+# for.
+#
+# `--rest 360` is not throttling for its own sake, it is what makes running
+# this for weeks affordable. A serverless Postgres suspends its compute only
+# once nothing is connected, and crawl_forever drops the connection across any
+# rest over a minute — so a six-minute rest means the compute is awake for the
+# ~15 seconds a lap takes and asleep the rest of the time. Held open instead,
+# a 24/7 crawler spends ~180 compute-hours a month against a free tier that
+# allows 191.9, and the sweep still needs its share.
+#
+# The rate that buys: ~20 pages every 6 minutes, so ~4,600 pages and ~2 MB of
+# frontier rows a day. Discovery is measured in weeks; this is a pace it can
+# hold for months without filling a 0.5 GB database.
+#
+# REQTRACE_CRAWL_ARGS narrows it for a smoke test without editing the plist.
 # shellcheck disable=SC2086 - word splitting is the point for the args var
 "$UV" run --project "$ROOT" python scripts/crawl_forever.py \
-    --expand --lap-pages 20 --rest 45 \
+    --expand --lap-pages 20 --rest 360 \
     ${REQTRACE_CRAWL_ARGS:-} >> "$LOG" 2>&1
 status=$?
 
