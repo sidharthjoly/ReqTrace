@@ -38,8 +38,39 @@ def snap(jobs, complete=True, error=None, token="acme"):
                          complete=complete, jobs=jobs, error=error)
 
 
+# The fixture below TRUNCATEs. That warning used to live only in the module
+# docstring, and a docstring does not stop anything: this suite was pointed at
+# the production branch and emptied 57,119 jobs, 2,707 board_runs and every
+# company row. The `first_seen_at` series it destroyed is the one thing here
+# that cannot be recovered by fetching again, and Neon's six-hour restore
+# window was missed. So the rule is now enforced rather than documented.
+def _refuse_anything_that_looks_real(dsn: str) -> None:
+    """Allow only a database that is obviously disposable.
+
+    Deliberately a whitelist: 'does this look like production?' fails open on
+    every DSN nobody thought of, and the cost of being wrong is measured in
+    history that no re-scrape brings back.
+    """
+    import urllib.parse
+
+    if dsn == os.environ.get("DATABASE_URL"):
+        pytest.exit("REQTRACE_TEST_DSN is the same database as DATABASE_URL. "
+                    "These tests TRUNCATE. Point them at a throwaway.")
+    p = urllib.parse.urlsplit(dsn)
+    name = (p.path or "").lstrip("/").split("?")[0]
+    host = (p.hostname or "").lower()
+    local = host in ("", "localhost", "127.0.0.1", "::1")
+    if not (local or "test" in name.lower()):
+        pytest.exit(
+            f"REQTRACE_TEST_DSN points at {host or 'a socket'}/{name!r}, which is "
+            "neither local nor named like a test database. These tests TRUNCATE "
+            "jobs, board_runs and companies. Use a throwaway, or rename it to "
+            "include 'test'.")
+
+
 @pytest.fixture
 def store():
+    _refuse_anything_that_looks_real(DSN)
     s = Store(dsn=DSN)
     s.init_schema()
     s.conn.execute("TRUNCATE jobs, board_runs, companies")
@@ -208,3 +239,55 @@ def test_the_two_backends_bucket_the_same_weeks(store, tmp_path):
     series = lambda p: [(w["start"], w["opened"], w["closed"]) for w in p["weeks"]]
     assert series(pg) == series(sq)
     assert sum(w["opened"] for w in pg["weeks"]) == 3, "the January role was charted"
+
+
+# -- idle transactions, which only Postgres can show us --------------------
+#
+# These exist because a bug shipped that the whole SQLite suite was structurally
+# blind to. Python's sqlite3 does not begin a transaction for a SELECT, so a
+# read that forgets to end its transaction is invisible there and fatal here:
+# psycopg leaves the transaction open, Neon's idle_in_transaction_session_timeout
+# is five minutes, and a sweep reads its plan and then fetches boards for the
+# better part of an hour before writing anything. Both scheduled workflows died
+# on it, every run, with an error pointing at an innocent statement.
+
+def idle(store) -> bool:
+    """True when the connection holds no open transaction."""
+    import psycopg
+    return store.conn.info.transaction_status == psycopg.pq.TransactionStatus.IDLE
+
+
+def test_reads_do_not_leave_a_transaction_open(store):
+    store.reconcile(snap([job("1")]))
+    assert idle(store), "reconcile should leave nothing open"
+
+    store.open_jobs("greenhouse", "acme")
+    assert idle(store), "open_jobs left a transaction open"
+
+    store.hashes("greenhouse", "acme")
+    assert idle(store), "hashes left a transaction open"
+
+    store.last_attempted("greenhouse")
+    assert idle(store), "last_attempted left a transaction open -- this is the "\
+                        "one the sweep calls before an hour of HTTP"
+
+
+def test_the_store_survives_being_closed_and_reopened(store):
+    """The sweep drops its connection across the fetch phase, so reopening has
+    to actually work against Postgres and not merely against SQLite."""
+    store.reconcile(snap([job("1")]))
+    store.close()
+    store.reopen()
+    assert store.open_jobs("greenhouse", "acme")
+    assert idle(store)
+
+
+def test_a_dead_connection_is_recognised_whatever_the_error_class(store):
+    """`_dropped` used to test the exception class alone, so an
+    idle-in-transaction kill -- an InternalError, not an OperationalError --
+    escaped the reconnect that exists for exactly this."""
+    import psycopg
+    assert not store._dropped(ValueError("unrelated"))
+    store.conn.close()
+    assert store._dropped(psycopg.errors.IdleInTransactionSessionTimeout("gone"))
+    store.reopen()
