@@ -1,0 +1,559 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReqTrace · ingest health</title>
+<style>
+  :root {
+    /* Dark industrial console. The palette is deliberately monochrome, which
+       settles an old hazard on this page: green/amber/red is the canonical
+       colourblind trap, so board state is carried by a word plus a fill weight
+       (solid / muted / outline) and never by hue. */
+    --bg:#08080a; --panel:#0b0b0d; --well:#0e0e11; --track:#15151a;
+    --line:#1e1e22; --line-2:#26262a; --line-3:#33333a;
+    --ink:#f2f2f3; --ink-2:#e4e4e6; --dim:#c9c9cd; --muted:#a8a8ad;
+    --faint:#8a8a8f; --fainter:#7a7a7d;
+    --hover:#101014; --active:#141418;
+    --cond:'Barlow Condensed','Barlow SemiCondensed',ui-sans-serif,system-ui,-apple-system,sans-serif;
+    --body:'Barlow',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); }
+  body { color:var(--ink); font:14px/1.55 var(--body); }
+  a { color:var(--ink); text-decoration:none; }
+  ::selection { background:var(--ink); color:var(--bg); }
+  *:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+
+  .app { min-height:100vh; display:grid; grid-template-columns:minmax(0,232px) minmax(0,1fr); }
+
+  /* ---- sidebar ---- */
+  .side { border-right:1px solid var(--line); background:var(--panel);
+    display:flex; flex-direction:column; position:sticky; top:0;
+    align-self:start; height:100vh; overflow-y:auto; }
+  .brand { padding:20px 18px 16px; border-bottom:1px solid var(--line); }
+  .brand .mark { display:flex; align-items:center; gap:9px; }
+  .brand .name { font-family:var(--cond); font-weight:600; font-size:19px;
+    letter-spacing:.14em; text-transform:uppercase; line-height:1; }
+  .brand .sub { margin-top:7px; font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .nav { padding:14px 10px; display:flex; flex-direction:column; gap:2px; }
+  .nav .h { padding:0 8px 8px; font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--faint); }
+  .nav a { display:flex; align-items:center; gap:10px; padding:8px 9px;
+    border:1px solid transparent; color:var(--muted); font-family:var(--cond);
+    font-weight:600; font-size:14px; letter-spacing:.09em; text-transform:uppercase; }
+  .nav a:hover { background:var(--active); color:#fff; }
+  .nav a[aria-current=page] { background:var(--active); border-color:var(--line-3); color:#fff; }
+  .nav a .ico { display:flex; width:16px; height:16px; flex:none; }
+  .nav a .n { margin-left:auto; font-family:var(--body); font-weight:400; font-size:11px;
+    letter-spacing:0; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .sweep { margin-top:auto; padding:16px 18px; border-top:1px solid var(--line);
+    display:flex; flex-direction:column; gap:10px; }
+  .sweep .h { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); }
+  .sweep .state { display:flex; align-items:center; gap:8px; font-family:var(--cond);
+    font-weight:600; letter-spacing:.09em; text-transform:uppercase; font-size:13px; }
+  .sweep .state i { width:6px; height:6px; background:var(--ink); flex:none; }
+  .sweep .state.is-degraded i { background:var(--muted); }
+  .sweep .state.is-bad i { background:transparent; border:1px solid var(--ink); }
+  .sweep .when { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; line-height:1.5; }
+  .spark { display:flex; gap:1px; height:22px; align-items:flex-end; }
+  .spark span { flex:1; background:var(--ink); min-height:2px; }
+  .spark span.last { background:var(--muted); }
+  .sweep .cap { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); }
+
+  /* ---- header ---- */
+  .col { min-width:0; display:flex; flex-direction:column; }
+  header { border-bottom:1px solid var(--line); background:var(--panel);
+    position:sticky; top:0; z-index:5; }
+  .topbar { display:flex; align-items:center; gap:16px; padding:0 20px; min-height:48px;
+    flex-wrap:wrap; }
+  .topbar .t { font-family:var(--cond); font-weight:600; font-size:15px;
+    letter-spacing:.12em; text-transform:uppercase; }
+  .vr { width:1px; height:16px; background:var(--line-2); }
+  .topbar .s { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .topbar .right { margin-left:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .stamp { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; letter-spacing:.06em; }
+  .mode { display:flex; align-items:center; gap:7px; padding:4px 9px; border:1px solid var(--line-2); }
+  .mode i { width:5px; height:5px; background:var(--ink); }
+  .mode span { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+
+  /* ---- main ---- */
+  main { padding:20px; display:flex; flex-direction:column; gap:20px; min-width:0; }
+  .panel { border:1px solid var(--line); background:var(--panel); min-width:0; }
+  .panel-h { padding:11px 16px; border-bottom:1px solid var(--line); font-size:10px;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .panel-h .note { font-size:11px; color:var(--faint); letter-spacing:.06em; text-transform:none; }
+  .panel-h .r { margin-left:auto; font-size:10px; letter-spacing:.14em; color:var(--faint); }
+
+  /* Freshness is the one number this page exists to answer. */
+  .hero { border:1px solid var(--line); background:var(--panel); padding:20px;
+    display:flex; flex-wrap:wrap; gap:14px 40px; align-items:flex-end; }
+  .hero .k { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .hero .big { font-family:var(--cond); font-weight:600; font-size:56px; line-height:1;
+    letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin-top:6px; }
+  .hero .when { font-size:12px; color:var(--faint); margin-top:6px; font-variant-numeric:tabular-nums; }
+  .hero .right { margin-left:auto; display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+  .badge { display:flex; align-items:center; gap:9px; border:1px solid var(--ink); padding:6px 12px;
+    font-family:var(--cond); font-weight:600; font-size:14px; letter-spacing:.14em;
+    text-transform:uppercase; }
+  .badge i { width:6px; height:6px; background:var(--ink); }
+  .badge.is-degraded { border-color:var(--muted); }
+  .badge.is-degraded i { background:var(--muted); }
+  .badge.is-bad i { background:transparent; border:1px solid var(--ink); }
+  .hero .exp { font-size:11px; color:var(--muted); max-width:32ch; text-wrap:pretty; }
+
+  .tiles { display:grid; gap:1px; background:var(--line); border:1px solid var(--line);
+    grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .tile { position:relative; background:var(--panel); padding:14px 16px 15px; }
+  .tile .k { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .tile .v { font-family:var(--cond); font-weight:600; font-size:34px; line-height:1.05;
+    letter-spacing:-.01em; font-variant-numeric:tabular-nums; margin-top:6px; }
+  .tile .v.quiet { color:var(--faint); }
+  .tile .sub { font-size:11px; color:var(--faint); margin-top:3px; font-variant-numeric:tabular-nums; }
+  .tile::after { content:''; position:absolute; top:6px; right:6px; width:5px; height:5px;
+    border-top:1px solid var(--line-3); border-right:1px solid var(--line-3); }
+
+  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend i { width:9px; height:7px; display:inline-block; }
+  .sw-ok { background:var(--ink); }
+  .sw-inc { background:var(--muted); }
+  .sw-bad { border:1px solid var(--faint); }
+
+  .scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums; }
+  th { text-align:right; padding:9px 16px; border-bottom:1px solid var(--line); font-size:10px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:500;
+    white-space:nowrap; }
+  td { text-align:right; padding:10px 16px; border-bottom:1px solid var(--track); white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; }
+  tbody tr:hover { background:var(--hover); }
+  tbody tr:last-child td { border-bottom:0; }
+  .vendor { font-family:var(--cond); font-weight:600; font-size:15px; letter-spacing:.09em;
+    text-transform:uppercase; }
+  .zero { color:var(--fainter); }
+  .up { color:var(--ink); }
+  /* Segments are separated by a 2px gap so adjacent fills never read as one,
+     each carries its own title, and the bar as a whole is labelled — the fill
+     weight is a second cue, not the only one. */
+  .bar { display:flex; gap:2px; height:8px; width:132px; background:var(--track); }
+  .bar span { min-width:4px; }
+  .bar .s-ok { background:var(--ink); }
+  .bar .s-inc { background:var(--muted); }
+  .bar .s-bad { border:1px solid var(--faint); box-sizing:border-box; }
+
+  .probs { display:flex; flex-direction:column; }
+  .prob { padding:13px 16px; border-bottom:1px solid var(--track); display:flex;
+    flex-direction:column; gap:6px; }
+  .prob:last-child { border-bottom:0; }
+  .prob .top { display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
+  .prob .tok { font-family:var(--mono); font-size:12px; color:var(--ink-2);
+    overflow-wrap:anywhere; }
+  .prob .st { font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:1px 7px;
+    border:1px solid var(--faint); color:var(--ink-2); }
+  .prob .st.failed { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .prob .rows { margin-left:auto; font-size:11px; color:var(--muted);
+    font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .prob .detail { font-family:var(--mono); font-size:11.5px; color:var(--faint);
+    text-wrap:pretty; overflow-wrap:anywhere; }
+
+  .chart { padding:16px; display:flex; flex-direction:column; gap:12px; flex:1; }
+  .chart .plot { display:flex; gap:10px; align-items:flex-end; height:132px; }
+  .chart .day { flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; min-width:0; }
+  .chart .pair { display:flex; gap:2px; align-items:flex-end; height:104px; width:100%;
+    justify-content:center; }
+  .chart .pair span { width:42%; }
+  .chart .n-new { background:var(--ink); }
+  .chart .n-closed { background:var(--fainter); }
+  .chart .lab { font-size:10px; letter-spacing:.08em; color:var(--muted);
+    font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .chart .hr { height:1px; background:var(--line); margin-top:auto; }
+  .chart .foot { font-size:11.5px; color:var(--muted); text-wrap:pretty; }
+
+  .log { padding:0 16px 4px; }
+  .log .row { display:grid; grid-template-columns:64px minmax(0,1fr) auto 92px; gap:16px;
+    align-items:baseline; padding:8px 0; border-bottom:1px solid var(--track);
+    font-family:var(--mono); font-size:11.5px; color:var(--faint); }
+  .log .row:last-child { border-bottom:0; }
+  .log .b { color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .log .st { letter-spacing:.08em; text-transform:uppercase; text-align:right; white-space:nowrap; }
+  .log .st.complete { color:var(--faint); }
+  .log .st.incomplete, .log .st.failed { color:var(--ink); }
+
+  details { border:1px solid var(--line); background:var(--panel); }
+  summary { cursor:pointer; padding:11px 16px; font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted); }
+  summary:hover { color:#fff; }
+  .empty { padding:20px 16px; color:var(--faint); font-size:13px; }
+  .note { font-size:11.5px; color:var(--muted); text-wrap:pretty; }
+  code { font-family:var(--mono); font-size:11px; color:var(--dim); }
+  footer { padding:6px 0 24px; font-size:11px; color:var(--faint); letter-spacing:.06em;
+    display:flex; gap:16px; flex-wrap:wrap; }
+  footer .path { margin-left:auto; font-family:var(--mono); }
+
+  @media (max-width:900px) {
+    .app { grid-template-columns:minmax(0,1fr); }
+    .side { position:static; height:auto; border-right:0;
+      border-bottom:1px solid var(--line); }
+    .sweep { margin-top:0; }
+    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 12h18"></path><path d="M12 3v18"></path></svg>
+        <div class="name">ReqTrace</div>
+      </div>
+      <div class="sub">AU requisition index · v0.1</div>
+    </div>
+    <nav class="nav">
+      <div class="h">Console</div>
+      <a href="index.html">
+        <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg></span>
+        <span>Search</span><span class="n" id="nav-search">—</span>
+      </a>
+      <a href="runs.html" aria-current="page">
+        <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg></span>
+        <span>Ingest</span><span class="n" id="nav-runs">—</span>
+      </a>
+    </nav>
+    <div class="sweep" id="sweep" hidden>
+      <div class="h">Sweep</div>
+      <div class="state" id="sweep-state"></div>
+      <div class="when" id="sweep-when"></div>
+      <div class="spark" id="sweep-spark"></div>
+      <div class="cap" id="sweep-cap"></div>
+    </div>
+  </aside>
+
+  <div class="col">
+    <header>
+      <div class="topbar">
+        <div class="t">Ingest health</div>
+        <div class="vr"></div>
+        <div class="s" id="subtitle">every sweep diffs each board in full</div>
+        <div class="right">
+          <div class="stamp" id="stamp"></div>
+          <div class="mode"><i></i><span id="mode">Live index</span></div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="hero" id="hero"><div><div class="big">loading…</div></div></div>
+      <div id="snapshot-note"></div>
+      <div class="tiles" id="tiles"></div>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span>Coverage by vendor</span>
+          <span class="legend">
+            <span><i class="sw-ok"></i>complete</span>
+            <span><i class="sw-inc"></i>incomplete</span>
+            <span><i class="sw-bad"></i>failed</span>
+          </span>
+        </div>
+        <div class="note" style="padding:11px 16px 0">Each board's most recent run, rolled
+          up per adapter. A board is <b>complete</b> when the vendor's own total matched
+          what was parsed — only a complete snapshot is allowed to close anything, so
+          <b>incomplete</b> boards are being read but are not retiring filled roles.</div>
+        <div class="scroll"><table id="vendors"></table></div>
+      </div>
+
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:stretch">
+        <div class="panel" style="flex:1 1 380px;display:flex;flex-direction:column">
+          <div class="panel-h">Needs attention</div>
+          <div class="probs" id="problems"></div>
+        </div>
+        <div class="panel" style="flex:1 1 380px;display:flex;flex-direction:column">
+          <div class="panel-h">
+            <span>Churn by day</span>
+            <span class="legend">
+              <span><i class="sw-ok"></i>new</span>
+              <span><i style="background:#7a7a7d"></i>closed</span>
+            </span>
+          </div>
+          <div class="chart">
+            <div class="plot" id="churn"></div>
+            <div class="hr"></div>
+            <div class="foot" id="churn-note"></div>
+          </div>
+        </div>
+      </div>
+
+      <details>
+        <summary>Raw run log — last 100 board fetches</summary>
+        <div class="log" id="recent"></div>
+      </details>
+
+      <footer>
+        <span>Scheduled by launchd · <code>python scripts/install_autorun.py --status</code></span>
+        <span class="path">data/logs/ingest.log</span>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? '').toString().replace(/[<>&"]/g,
+  c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const n = v => (v ?? 0).toLocaleString();
+// A zero is real information here (no closures today) but it should not shout
+// as loudly as a count that moved.
+const num = v => (v ? `<span class="up">${n(v)}</span>` : '<span class="zero">0</span>');
+
+const parse = iso => iso ? new Date(iso.replace(' ', 'T')) : null;
+const hoursSince = iso => {
+  const d = parse(iso);
+  return d && !isNaN(d) ? (Date.now() - d) / 36e5 : null;
+};
+const ago = h => {
+  if (h === null) return 'never';
+  if (h < 1) return Math.max(Math.round(h * 60), 1) + ' min ago';
+  if (h < 48) return Math.round(h) + 'h ago';
+  return Math.round(h / 24) + 'd ago';
+};
+const stamp = iso => {
+  const d = parse(iso);
+  return d && !isNaN(d) ? d.toLocaleString(undefined,
+    { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+};
+const clock = iso => {
+  const d = parse(iso);
+  return d && !isNaN(d) ? d.toLocaleTimeString(undefined, { hour12: false }) : '—';
+};
+
+function level(s) {
+  // Failed boards are the alarm; stale ones mean the schedule itself stopped,
+  // which is worse but shows up as staleness rather than as an error row.
+  const h = hoursSince(s.last_run);
+  const bad = s.failed > 0 || (h !== null && h > s.stale_hours);
+  return bad ? 'bad' : (s.incomplete > 0 || s.stale > 0) ? 'degraded' : 'ok';
+}
+const LABEL = { ok: 'Healthy', degraded: 'Degraded', bad: 'Stalled' };
+
+function hero(s) {
+  if (!s.ever_run) {
+    $('#hero').innerHTML = `<div><div class="big">No sweeps yet</div>
+      <div class="when">Run <code>uv run python -m reqtrace.run --vendor all</code>,
+      or install the schedule with <code>python scripts/install_autorun.py</code>.</div></div>`;
+    return;
+  }
+  const lv = level(s), h = hoursSince(s.last_run);
+  const bits = [];
+  if (s.incomplete) bits.push(`${n(s.incomplete)} board${s.incomplete === 1 ? '' : 's'} incomplete`);
+  if (s.failed) bits.push(`${n(s.failed)} failed`);
+  if (s.stale) bits.push(`${n(s.stale)} stale`);
+  $('#hero').innerHTML = `
+    <div>
+      <div class="k">Last board fetched</div>
+      <div class="big">${esc(ago(h))}</div>
+      <div class="when">${esc(stamp(s.last_run))} · a board unseen for ${s.stale_hours}h counts as stale</div>
+    </div>
+    <div class="right">
+      <div class="badge is-${lv}"><i></i>${LABEL[lv]}</div>
+      <div class="exp">${bits.length ? esc(bits.join(', ')) + '. Incomplete boards are read but retire nothing.'
+        : 'Every board&rsquo;s last run came back whole.'}</div>
+    </div>`;
+}
+
+function tiles(s, idx) {
+  const t = [
+    ['Boards tracked', n(s.boards), 'across all adapters'],
+    ['Complete', n(s.ok), `of ${n(s.boards)} latest runs`],
+    ['Incomplete', n(s.incomplete), 'cannot close roles'],
+    ['Failed', n(s.failed), 'latest run errored'],
+    ['Stale', n(s.stale), `unseen > ${s.stale_hours}h`, true],
+    ['Open roles', idx ? n(idx.au_open) : '—', idx ? `${n(idx.closed)} closed and retired` : '', true],
+  ];
+  $('#tiles').innerHTML = t.map(([k, v, sub, quiet]) => `<div class="tile">
+    <div class="k">${esc(k)}</div>
+    <div class="v${quiet ? ' quiet' : ''}">${v}</div>
+    <div class="sub">${esc(sub)}</div>
+  </div>`).join('');
+}
+
+function healthBar(r) {
+  const seg = (cls, v, word) => v
+    ? `<span class="s-${cls}" style="flex:${v}" title="${v} ${word}"></span>` : '';
+  return `<div class="bar" role="img" aria-label="${r.ok} complete, ${r.incomplete} incomplete, ${r.failed} failed of ${r.boards || 1}">${
+    seg('ok', r.ok, 'complete')}${seg('inc', r.incomplete, 'incomplete')}${seg('bad', r.failed, 'failed')}</div>`;
+}
+
+function vendorTable(rows) {
+  $('#vendors').innerHTML = `
+    <thead><tr>
+      <th>Vendor</th><th style="text-align:left">Health</th><th>Boards</th><th>Complete</th>
+      <th>Incomplete</th><th>Failed</th><th>Jobs</th><th>New</th><th>Closed</th>
+      <th>Last run</th>
+    </tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td class="vendor">${esc(r.vendor)}</td>
+      <td style="text-align:left">${healthBar(r)}</td>
+      <td>${n(r.boards)}</td>
+      <td style="color:var(--ink-2)">${n(r.ok)}</td>
+      <td>${num(r.incomplete)}</td>
+      <td>${num(r.failed)}</td>
+      <td style="color:var(--faint)">${n(r.fetched)}</td>
+      <td style="color:var(--faint)">${num(r.new)}</td>
+      <td style="color:var(--faint)">${num(r.closed)}</td>
+      <td style="color:var(--muted)" title="${esc(stamp(r.last_run))}">${esc(ago(hoursSince(r.last_run)))}</td>
+    </tr>`).join('')}</tbody>`;
+}
+
+function problemList(rows) {
+  if (!rows.length) {
+    $('#problems').innerHTML =
+      '<div class="empty">Nothing to look at — every board’s last run came back whole.</div>';
+    return;
+  }
+  $('#problems').innerHTML = rows.map(r => `<div class="prob">
+    <div class="top">
+      <span class="tok">${esc(r.vendor)}:${esc(r.token)}</span>
+      <span class="st ${r.error ? 'failed' : ''}">${r.error ? 'failed' : 'incomplete'}</span>
+      <span class="rows" title="${esc(stamp(r.fetched_at))}">${n(r.fetched)} rows · ${esc(ago(hoursSince(r.fetched_at)))}</span>
+    </div>
+    <div class="detail">${esc(r.error || 'parsed fewer jobs than the vendor reported — closures skipped')}</div>
+  </div>`).join('');
+}
+
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const dayLabel = day => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day || '');
+  return m ? `${m[3]} ${MONTHS[+m[2] - 1]}` : (day || '');
+};
+
+function churnChart(rows) {
+  // The first sweep counts the entire backfill as "new", so the series only
+  // becomes a hiring signal from the second day on. Say so rather than letting
+  // a 51,000-row day read as a hiring surge.
+  $('#churn-note').textContent = rows.length < 2
+    ? 'One day of runs so far. The series becomes meaningful once the daily sweep has run a few times — and the first sweep counts the whole backfill as new.'
+    : 'The first day of any board counts as backfill, not hiring: everything on a board is new the first time it is seen.';
+  const days = rows.slice(-7);
+  const max = Math.max(...days.flatMap(r => [r.new || 0, r.closed || 0]), 1);
+  const h = v => Math.max(Math.round((v || 0) / max * 104), v ? 2 : 0) + 'px';
+  $('#churn').innerHTML = days.map(r => `<div class="day">
+    <div class="pair">
+      <span class="n-new" style="height:${h(r.new)}" title="${n(r.new)} new"></span>
+      <span class="n-closed" style="height:${h(r.closed)}" title="${n(r.closed)} closed"></span>
+    </div>
+    <div class="lab">${esc(dayLabel(r.day))}</div>
+  </div>`).join('');
+}
+
+// The chart shows new against closed; board fetches and reopenings are real
+// numbers the chart has no room for, so the table keeps them rather than
+// letting the redesign quietly drop a column.
+function churnTable(rows) {
+  $('#churn-table').innerHTML = `
+    <thead><tr><th>Day</th><th>Board fetches</th><th>New</th><th>Closed</th>
+      <th>Reopened</th></tr></thead>
+    <tbody>${rows.slice().reverse().map(r => `<tr>
+      <td>${esc(r.day)}</td>
+      <td>${n(r.boards)}</td>
+      <td>${num(r.new)}</td>
+      <td>${num(r.closed)}</td>
+      <td>${num(r.reopened)}</td>
+    </tr>`).join('')}</tbody>`;
+}
+
+function recentLog(rows) {
+  $('#recent').innerHTML = rows.map(r => {
+    const bits = [`${n(r.fetched)} fetched`, `${n(r.new)} new`];
+    if (r.updated) bits.push(`${n(r.updated)} updated`);
+    bits.push(`${n(r.closed)} closed`);
+    if (r.reopened) bits.push(`${n(r.reopened)} reopened`);
+    const st = r.error ? 'failed' : r.complete ? 'complete' : 'incomplete';
+    return `<div class="row">
+      <span title="${esc(stamp(r.fetched_at))}">${esc(clock(r.fetched_at))}</span>
+      <span class="b" title="${esc(r.vendor)}:${esc(r.token)}">${esc(r.vendor)}:${esc(r.token)}</span>
+      <span>${esc(bits.join(' · '))}</span>
+      <span class="st ${st}">${st}</span>
+    </div>`;
+  }).join('');
+}
+
+function sweep(d, s) {
+  $('#nav-runs').textContent = n(s.boards);
+  if (!s.ever_run) return;
+  const lv = level(s);
+  $('#sweep-state').className = 'state is-' + lv;
+  $('#sweep-state').innerHTML = `<i></i>${LABEL[lv]}`;
+  $('#sweep-when').innerHTML =
+    `Last board ${esc(ago(hoursSince(s.last_run)))}<br>A board unseen for ${s.stale_hours}h is stale`;
+  const recent = (d.recent || []).slice(0, 24).reverse();
+  if (recent.length) {
+    const max = Math.max(...recent.map(r => r.fetched || 0), 1);
+    $('#sweep-spark').innerHTML = recent.map((r, i) =>
+      `<span class="${i === recent.length - 1 ? 'last' : ''}" style="height:${
+        Math.max(Math.round((r.fetched || 0) / max * 22), 2)}px"></span>`).join('');
+    $('#sweep-cap').textContent = `${recent.length} board fetches`;
+  }
+  $('#sweep').hidden = false;
+}
+
+// Same page against either backend: reqtrace.web's /api/runs, or the JSON the
+// static export drops next to it. The run log is 24KB, so the export carries
+// it whole rather than summarising — a health page that hides the raw rows is
+// asking to be trusted rather than checked.
+async function source() {
+  try {
+    const r = await fetch('data/health.json', { cache: 'no-store' });
+    if (r.ok) {
+      const m = await (await fetch('data/manifest.json')).json();
+      return [await r.json(), m.stats, m.generated_at];
+    }
+  } catch { /* served live, fall through */ }
+  return [await (await fetch('/api/runs')).json(),
+          await (await fetch('/api/stats')).json().catch(() => null), null];
+}
+
+source().then(([d, idx, asOf]) => {
+  if (d.error) {
+    $('#hero').innerHTML = `<div><div class="k">Run log</div>
+      <div class="big">Unreadable</div>
+      <div class="when">${esc(d.error)}</div></div>`;
+    return;
+  }
+  const s = d.summary;
+  $('#subtitle').textContent = `${n(s.boards)} boards · every sweep diffs each board in full`;
+  if (idx) $('#nav-search').textContent = n(idx.au_open);
+  hero(s);
+  tiles(s, idx);
+  vendorTable(d.vendors);
+  problemList(d.problems);
+  churnChart(d.churn);
+  recentLog(d.recent);
+  sweep(d, s);
+
+  // The churn table carries the columns the chart cannot. Built after the
+  // chart so the panel exists to hang it on.
+  const det = document.createElement('details');
+  det.innerHTML = '<summary>Churn table — board fetches and reopenings</summary>'
+    + '<div class="scroll"><table id="churn-table"></table></div>';
+  document.querySelector('details').before(det);
+  churnTable(d.churn);
+
+  if (asOf) {
+    // On a static export every "N hours ago" on this page is measured from the
+    // export, not from now. Saying so is the difference between a stale page
+    // and a lying one.
+    $('#mode').textContent = 'Static export';
+    $('#stamp').textContent = 'SNAPSHOT ' + stamp(asOf);
+    const el = document.createElement('div');
+    el.className = 'note';
+    el.textContent = 'Static snapshot exported ' + stamp(asOf) +
+      '. Ages on this page are counted from that moment, not from now.';
+    $('#snapshot-note').append(el);
+  } else {
+    $('#stamp').textContent = 'LIVE ' + stamp(new Date().toISOString());
+  }
+});
+</script>
