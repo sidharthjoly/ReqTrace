@@ -204,6 +204,41 @@ def test_a_board_that_overruns_is_cut_off_without_closing_its_jobs(store, monkey
     assert store.open_jobs("greenhouse", "slow") != {}   # nothing retired
 
 
+def test_boards_finished_before_a_kill_are_already_recorded(store, monkeypatch):
+    """A sweep used to reconcile a vendor only once every board in it had been
+    fetched, which made a cancelled run worth nothing: `_record_run` happens
+    inside `reconcile`, so boards that had already been fetched recorded no
+    attempt, and `stalest` — which ranks on attempts — handed back the
+    identical list next time.
+
+    That is a stall, not a slow run, and it happened: with ~890 boards adopted
+    at once and none ever attempted, three scheduled sweeps in a row selected
+    the same 400 Workday tenants, ran to the job timeout, and advanced none of
+    them. So the property here is not that the sweep finishes; it is that what
+    it finished survives the run not finishing.
+    """
+    import asyncio
+    from reqtrace import run as R
+
+    monkeypatch.setattr(R, "FLUSH_EVERY", 2)
+    monkeypatch.setattr(R, "CONCURRENCY", 1)   # so completion order is the list
+
+    async def fake(adapter, client, token):
+        if token == "killed":
+            raise RuntimeError("runner went away")   # stands in for the SIGKILL
+        return BoardSnapshot(ats_vendor="greenhouse", board_token=token,
+                             complete=True)
+
+    monkeypatch.setattr(R, "run_board", fake)
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(_sweep(["a", "b", "killed"], store, deadline=None))
+
+    # "a" and "b" filled a batch and were written before the third board ran.
+    # Under the old gather-then-reconcile this set was empty.
+    assert set(store.last_attempted("greenhouse")) == {"a", "b"}
+
+
 # -- tiering ---------------------------------------------------------------
 
 def test_tier_is_relevance_first_then_volume():

@@ -54,10 +54,48 @@ CONCURRENCY = 4
 # exists to cover. 25 gives that a third of headroom instead.
 #
 # The ceiling on this number is the workflow: four boards can start moments
-# before `--deadline 270` and each run the full timeout, so 270 + 25 = 295
-# against a 330-minute job limit, leaving 35 minutes for the export and the
+# before `--deadline 140` and each run the full timeout, so 140 + 25 = 165
+# against a 210-minute job limit, leaving 45 minutes for the export and the
 # publish. Raising the deadline and this together will run out of room.
 BOARD_TIMEOUT = 25 * 60
+
+# How many finished boards may go unwritten before the sweep stops to write.
+#
+# The sweep used to fetch a whole vendor and reconcile afterwards, which made
+# a killed run worth precisely nothing. `_record_run` fires inside
+# `reconcile`, so a run cut off mid-fetch recorded no attempt against any of
+# the boards it had already fetched, and `stalest` — which ranks on attempts —
+# selected exactly the same boards next time.
+#
+# That is not a slow sweep, it is a stalled one, and it showed: with ~890
+# boards adopted at once by the crawler and none ever attempted, three
+# consecutive scheduled runs each picked up the same 400 never-attempted
+# Workday tenants, spent 3.5 hours, were cancelled at the job timeout, and
+# advanced nothing. The never-attempted count stayed pinned at the budget
+# while the crawler kept adding more behind it.
+#
+# Writing in chunks bounds the loss to a chunk instead of a run.
+#
+# A chunk is fetched concurrently, then reconciled with nothing in flight,
+# rather than reconciling each board the moment it lands. Reconcile is
+# synchronous and `_upsert` costs a round trip per job, so writing a large
+# Workday tenant blocks the event loop for seconds and a whole chunk for
+# minutes; doing that while other boards are mid-fetch would push them past
+# httpx's 45s read timeout and fail them for no reason.
+#
+# The cost of chunking is the tail: a chunk is only as quick as its slowest
+# board, so one tenant that runs the full BOARD_TIMEOUT holds up the writing
+# of the other 19. That is a throughput loss, not a correctness one, and it
+# is bounded at 20 boards where the old whole-vendor pass was bounded at 400.
+#
+# On the never-attempted Workday backlog that bound will bind rather than
+# stay theoretical: 2,000- and 4,000-job tenants are common there, not
+# outliers, so two or three chunks stalling on a 25-minute board would spend
+# most of a 140-minute deadline waiting on four-board wavefronts. If the
+# drain rate turns out to be the problem, this is the number to revisit --
+# but measure it across several runs first, because the boards are swept in
+# `stalest` order and the early chunks are not the cheap ones.
+FLUSH_EVERY = 20
 
 
 # Which vendors resolve tokens case-insensitively is one fact with several
@@ -283,56 +321,96 @@ async def sweep(vendor: str, tokens: list[str], store: Store,
     tenant can cost minutes where a small Greenhouse board costs one request.
     The clock is what the runner actually enforces, so the clock is what the
     sweep should watch.
+
+    Boards are reconciled in batches as they finish rather than in one pass
+    at the end, so that a run the runner cancels keeps the work it had
+    already done. See FLUSH_EVERY.
     """
-    skipped = 0
-    if client is None:
-        snaps = [replay_board(vendor, t) for t in tokens]
-    else:
-        sem = asyncio.Semaphore(CONCURRENCY)
-
-        async def one(token):
-            async with sem:
-                # Checked inside the semaphore, so it reflects the time the
-                # board would actually start rather than when it was queued.
-                if deadline is not None and time.monotonic() >= deadline:
-                    return None
-                if not BOARD_TIMEOUT:
-                    return await run_board(ADAPTERS[vendor], client, token)
-                try:
-                    async with asyncio.timeout(BOARD_TIMEOUT):
-                        return await run_board(ADAPTERS[vendor], client, token)
-                except TimeoutError:
-                    # `complete=False` is doing real work here: `store.py`
-                    # refuses to retire jobs from an incomplete snapshot, so a
-                    # board cut off halfway cannot be read as mass closures.
-                    return BoardSnapshot(
-                        ats_vendor=vendor, board_token=token, complete=False,
-                        error=f"exceeded {BOARD_TIMEOUT / 60:.0f}m board timeout")
-
-        # Let go of the database for the fetch. Nothing in `one` touches it,
-        # and this phase is long -- a 400-board Workday pass measured 53
-        # minutes before it wrote a single row. Holding the connection across
-        # that keeps a serverless compute awake for the whole of it, which on a
-        # free tier is compute-hours spent waiting on somebody else's HTTP.
-        #
-        # It also removes the failure this code was fixed for twice over: a
-        # connection that is not held cannot be killed for being idle.
-        store.close()
-        try:
-            results = await asyncio.gather(*(one(t) for t in tokens))
-        finally:
-            store.reopen()
-        snaps = [s for s in results if s is not None]
-        skipped = len(results) - len(snaps)
-
     failures = 0
-    for snap in snaps:
-        res = store.reconcile(snap)
-        print(res.summary())
+    skipped = 0
+
+    def report(res) -> int:
+        # flush=True because these lines are the only record that a board was
+        # done at all, and the runs that most need reading are the ones the
+        # runner kills. stdout is a pipe under Actions, so the default block
+        # buffering drops the last few KB at exactly the wrong moment: a
+        # cancelled sweep looked like it had reconciled nothing for two and a
+        # half hours when it had simply never flushed.
+        print(res.summary(), flush=True)
         for t in res.closed_titles:
-            print(f"    closed: {t}")
-        failures += 1 if res.error else 0
-    return len(snaps), failures, skipped
+            print(f"    closed: {t}", flush=True)
+        return 1 if res.error else 0
+
+    if client is None:
+        # Offline replay. There is no long fetch to let go of the database
+        # across, so the connection stays exactly as the caller left it.
+        snaps = [replay_board(vendor, t) for t in tokens]
+        for snap in snaps:
+            failures += report(store.reconcile(snap))
+        return len(snaps), failures, skipped
+
+    sem = asyncio.Semaphore(CONCURRENCY)
+
+    async def one(token):
+        async with sem:
+            # Checked inside the semaphore, so it reflects the time the
+            # board would actually start rather than when it was queued.
+            if deadline is not None and time.monotonic() >= deadline:
+                return None
+            if not BOARD_TIMEOUT:
+                return await run_board(ADAPTERS[vendor], client, token)
+            try:
+                async with asyncio.timeout(BOARD_TIMEOUT):
+                    return await run_board(ADAPTERS[vendor], client, token)
+            except TimeoutError:
+                # `complete=False` is doing real work here: `store.py`
+                # refuses to retire jobs from an incomplete snapshot, so a
+                # board cut off halfway cannot be read as mass closures.
+                return BoardSnapshot(
+                    ats_vendor=vendor, board_token=token, complete=False,
+                    error=f"exceeded {BOARD_TIMEOUT / 60:.0f}m board timeout")
+
+    def flush(batch: list[BoardSnapshot]) -> None:
+        """Write one chunk's boards, then let go of the database again.
+
+        Synchronous, and called only between chunks — never while a request
+        is in flight. That ordering is not tidiness: `_upsert` is one round
+        trip per job, so reconciling a chunk of large Workday tenants is
+        minutes of blocked event loop, and anything still fetching would sit
+        past httpx's 45s read timeout and fail for no reason.
+        """
+        nonlocal failures
+        if not batch:
+            return
+        store.reopen()
+        try:
+            for snap in batch:
+                failures += report(store.reconcile(snap))
+        finally:
+            store.close()
+
+    # Let go of the database for the fetch. Nothing in `one` touches it, and
+    # this phase is long -- a whole-vendor Workday pass once measured 53
+    # minutes before it wrote a single row, and a chunk of it still runs for
+    # minutes. Holding the connection across that keeps a serverless compute
+    # awake for the whole of it, which on a free tier is compute-hours spent
+    # waiting on somebody else's HTTP.
+    #
+    # It also removes the failure this code was fixed for twice over: a
+    # connection that is not held cannot be killed for being idle.
+    store.close()
+    done = 0
+    try:
+        for i in range(0, len(tokens), FLUSH_EVERY):
+            results = await asyncio.gather(
+                *(one(t) for t in tokens[i:i + FLUSH_EVERY]))
+            batch = [r for r in results if r is not None]
+            skipped += len(results) - len(batch)
+            done += len(batch)
+            flush(batch)
+    finally:
+        store.reopen()
+    return done, failures, skipped
 
 
 async def main() -> int:

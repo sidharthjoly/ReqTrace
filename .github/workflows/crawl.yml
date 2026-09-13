@@ -44,6 +44,10 @@ on:
         required: false
         default: ""
 
+env:
+  # See the note in sweep.yml: a killed job must not take its log with it.
+  PYTHONUNBUFFERED: "1"
+
 concurrency:
   # Shared with sweep.yml, not a group of its own. The cron offset alone is not
   # the guarantee the header claims: a sweep that overruns past 02:15 would
