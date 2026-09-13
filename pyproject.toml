@@ -26,3 +26,11 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+# `scripts/` is not part of the installed package — `reqtrace` builds from
+# `src/` — so nothing puts the repo root on sys.path, and pytest's own
+# prepend-import only adds `tests/`. Without this, the one test that reaches
+# into `scripts.crawl_forever` fails to collect while every other test passes,
+# which reads as a broken test rather than a missing path.
+pythonpath = ["."]
